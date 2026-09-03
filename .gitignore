@@ -11,6 +11,7 @@ logs
 
 # Build
 dist/
+dist-demo/
 
 # Playwright
 test-results/

@@ -49,6 +49,7 @@
   "scripts": {
     "dev": "vite",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "build.demo": "vite build --base=/kugiri/",
     "check": "npm run check.types && npm run check.biome",
     "check.types": "tsc --noEmit",
     "check.biome": "biome lint --diagnostic-level=error",

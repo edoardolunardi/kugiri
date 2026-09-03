@@ -157,6 +157,8 @@ Content is classified by how it lays out, not by tag:
 
 ## Demo
 
+The demo is live at <https://edoardolunardi.github.io/kugiri/>.
+
 `npm run dev` opens the demo, which is also the test suite: about fifty cases, each split as it
 scrolls into view. **Check lines** compares every split with the lines the browser painted before
 the split, text and geometry. `npm test` runs the same check headless in Chromium, WebKit and
@@ -171,6 +173,7 @@ npm run check        # types and lint
 npm run format       # Biome, with fixes
 npm test             # Playwright against the demo
 npm run build        # dist/, from tsc
+npm run build.demo   # dist-demo/, the static demo published to GitHub Pages
 ```
 
 Commits follow Conventional Commits and are checked by a hook.
