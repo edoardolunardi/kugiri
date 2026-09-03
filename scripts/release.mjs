@@ -2,10 +2,12 @@
 // Unreleased section into a dated version section, restates the library size in the README and the
 // demo, bumps the version, commits, tags, pushes, publishes to npm and opens a GitHub release.
 //
-//   npm run release -- patch|minor|major|<x.y.z> [--dry-run] [--skip-tests]
+//   npm run release -- patch|minor|major|<x.y.z> [--otp=<code>] [--dry-run] [--skip-tests]
 //
-// A dry run does every read and every check and prints what it would write, without touching a
-// file, git, npm or GitHub. Nothing here is part of the library.
+// npm asks for a one-time password on publish when the account has two-factor auth, which it
+// should; pass it with --otp so the run does not stop there. A dry run does every read and every
+// check and prints what it would write, without touching a file, git, npm or GitHub. Nothing here
+// is part of the library.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -17,6 +19,7 @@ import { kb, sizes } from "./size.mjs";
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const skipTests = args.includes("--skip-tests");
+const otp = args.find((arg) => arg.startsWith("--otp="))?.slice("--otp=".length);
 const bump = args.find((arg) => !arg.startsWith("--"));
 
 const fail = (message) => {
@@ -52,7 +55,7 @@ const quietly = (command) => {
 // The version asked for.
 
 if (!bump) {
-  fail("usage: npm run release -- patch|minor|major|<x.y.z> [--dry-run] [--skip-tests]");
+  fail("usage: npm run release -- patch|minor|major|<x.y.z> [--otp=<code>] [--dry-run] [--skip-tests]");
 }
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
@@ -212,7 +215,7 @@ step("push");
 run(["git", "push", "--follow-tags", "origin", "main"]);
 
 step("publish");
-run(["npm", "publish"]);
+run(["npm", "publish", ...(otp ? [`--otp=${otp}`] : [])]);
 
 step("github release");
 

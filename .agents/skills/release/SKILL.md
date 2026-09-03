@@ -14,8 +14,17 @@ npm run release -- major      # 0.2.0 -> 1.0.0
 npm run release -- 0.4.2      # an explicit version
 ```
 
+The npm account has two-factor auth, so `npm publish` asks for a one-time password. Pass it up
+front and the whole run goes through without stopping:
+
+```sh
+npm run release -- minor --otp=123456
+```
+
 Add `--dry-run` to see everything it would do without writing a file or touching git, npm or
-GitHub. Add `--skip-tests` only when the suite has just passed on this exact commit.
+GitHub. Add `--skip-tests` only when the suite has just passed on this exact commit. Without
+`--otp`, the run stops at "publish" with the commit and tag already pushed; finish with
+`npm publish --otp=<code>` and the `gh release create` command from the list below.
 
 A push to `main` does not release anything: the only workflow in the repository publishes the demo
 to GitHub Pages. Releases are cut from a machine with this script.
