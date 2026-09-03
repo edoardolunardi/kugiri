@@ -1,0 +1,498 @@
+/* The demo's own styles. Nothing here is required by the splitter; the cases only need something to wrap in. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --ink: #16181f;
+  --muted: #6b6f7b;
+  --rule: #e2e3ea;
+  --accent: #5b3fd6;
+  --paper: #fafafc;
+  --plate: #ffffff;
+}
+
+html {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  padding: 0 32px 160px;
+}
+
+a {
+  color: inherit;
+}
+
+header {
+  display: grid;
+  gap: 24px;
+  padding: 64px 0 40px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+header p {
+  max-width: 60ch;
+  margin: 0;
+  color: var(--muted);
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font:
+    11px / 1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-transform: uppercase;
+}
+
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+section[data-case] {
+  display: grid;
+  gap: 16px;
+  padding: 40px 0;
+  border-top: 1px dashed var(--rule);
+}
+
+@media (min-width: 900px) {
+  section[data-case] {
+    grid-template-columns: 1fr 3fr;
+    gap: 32px;
+  }
+}
+
+.case-title {
+  margin: 0;
+  font:
+    12px / 1.3 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.case-expect {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.case-result {
+  margin: 8px 0 0;
+  font:
+    11px / 1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-transform: uppercase;
+  white-space: pre-line;
+}
+
+.case-result:empty {
+  display: none;
+}
+
+section[data-status="mismatch"] .case-result {
+  color: var(--accent);
+}
+
+.sample {
+  min-width: 0;
+  color: #3b3e49;
+}
+
+/* Every split target starts imperceptibly transparent, so the server-rendered text still paints. */
+[data-target] {
+  opacity: 0.001;
+}
+
+[data-target][data-revealed] {
+  opacity: 1;
+}
+
+.panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--plate) 90%, transparent);
+  backdrop-filter: blur(8px);
+  font:
+    11px / 1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-transform: uppercase;
+  white-space: pre;
+}
+
+.panel div {
+  display: flex;
+  gap: 8px;
+}
+
+.panel button {
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--plate);
+  font: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.panel button.primary {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--plate);
+}
+
+/* Type */
+
+.headline {
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  color: var(--ink);
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.subtitle {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.body {
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.mono {
+  font:
+    12px / 1.3 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.measure {
+  max-width: 60ch;
+}
+
+.headline-measure {
+  max-width: 36ch;
+}
+
+.narrow {
+  max-width: 240px;
+}
+
+.wide {
+  max-width: 620px;
+}
+
+.balance {
+  text-wrap: balance;
+}
+
+.pretty {
+  text-wrap: pretty;
+}
+
+.pre-line {
+  white-space: pre-line;
+}
+
+.pre-wrap {
+  white-space: pre-wrap;
+}
+
+.center {
+  text-align: center;
+}
+
+.right {
+  text-align: right;
+  margin-left: auto;
+}
+
+.justify {
+  text-align: justify;
+}
+
+.anywhere {
+  overflow-wrap: anywhere;
+}
+
+.hyphens {
+  hyphens: auto;
+}
+
+.indent {
+  text-indent: 2.5em;
+}
+
+.first-letter::first-letter {
+  font-size: 3.2em;
+  font-weight: 600;
+  line-height: 0.8;
+  color: var(--accent);
+}
+
+.drop-cap::first-letter {
+  float: left;
+  margin: 6px 8px 0 0;
+  font-size: 3.6em;
+  font-weight: 600;
+  line-height: 0.8;
+  color: var(--accent);
+}
+
+.first-line::first-line {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.columns {
+  columns: 2;
+  column-gap: 32px;
+}
+
+.vertical {
+  writing-mode: vertical-rl;
+  height: 320px;
+  max-width: none;
+}
+
+.small-caps {
+  font-variant: small-caps;
+}
+
+/* Inline pieces */
+
+.link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 160ms ease-out;
+}
+
+.link:hover {
+  text-decoration-color: var(--ink);
+}
+
+.dashed {
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.mark {
+  color: var(--accent);
+}
+
+sup {
+  vertical-align: 0.4em;
+  font-size: 0.6em;
+  line-height: 0;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font:
+    11px / 1.8 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.thumb {
+  float: left;
+  width: 120px;
+  height: 90px;
+  margin: 6px 16px 4px 0;
+  border-radius: 12px;
+  background: #e6e2f7;
+}
+
+.thumb.right {
+  float: right;
+  margin: 6px 0 4px 16px;
+}
+
+/* Blocks inside rich content */
+
+.rich {
+  display: grid;
+  gap: 20px;
+}
+
+.rich h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.rich p {
+  margin: 0;
+}
+
+.rich ol,
+.rich ul {
+  margin: 0;
+  padding-left: 24px;
+}
+
+.tile {
+  aspect-ratio: 16 / 9;
+  max-width: 620px;
+  border-radius: 16px;
+  background: #ebecf4;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--plate);
+  text-decoration: none;
+  font-size: 15px;
+}
+
+table {
+  max-width: 60ch;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+td {
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+}
+
+blockquote {
+  margin: 0;
+  padding-left: 16px;
+  border-left: 2px solid var(--rule);
+}
+
+blockquote cite {
+  display: block;
+  margin-top: 8px;
+  font:
+    11px / 1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-transform: uppercase;
+  font-style: normal;
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.sample details p {
+  margin: 8px 0 0;
+}
+
+ruby rt {
+  font-size: 0.55em;
+  color: var(--muted);
+}
+
+/* The CSS-only reveal: the split's own hooks drive it, the script only sets data-revealed. */
+
+.css-reveal [data-word] {
+  opacity: 0;
+  transform: translateY(0.6em);
+}
+
+.css-reveal[data-revealed] [data-word] {
+  animation: rise 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation-delay: calc(var(--word) * 30ms);
+}
+
+@keyframes rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

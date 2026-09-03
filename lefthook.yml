@@ -1,0 +1,21 @@
+# Pins the hooks to the .nvmrc Node before anything runs.
+rc: .lefthookrc
+
+pre-commit:
+  parallel: true
+  commands:
+    # Lint and auto-fix staged files with Biome.
+    lint-staged:
+      run: NO_COLOR=1 npx --no-progress -- @biomejs/biome check --no-errors-on-unmatched --files-ignore-unknown=true --write {staged_files}
+      stage_fixed: true
+    # Typecheck the library, the demo and the tests together.
+    typecheck:
+      glob: "*.ts"
+      run: NO_COLOR=1 npx --no-progress -- tsc --noEmit
+
+# Rejects a commit message that is not Conventional Commits. Rules live in commitlint.config.mjs.
+# `{1}` is the message file path git passes to the hook.
+commit-msg:
+  commands:
+    lint-message:
+      run: NO_COLOR=1 npx --no-progress -- commitlint --edit {1}

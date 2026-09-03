@@ -1,0 +1,180 @@
+# kugiri
+
+Splits text into lines, words and characters exactly where the browser already broke it.
+
+区切り (kugiri) is the point where one segment ends and the next begins. That is what this
+library finds: the line boxes the browser painted, the words and graphemes inside them, and nothing
+else. It cuts the DOM at those points and marks every unit so you can animate it, in CSS or in
+script. It never decides where a line should break; the browser did that already.
+
+- **Keeps the paint.** Lines are read off the text with `Range.getClientRects()`, not predicted, so
+  `text-wrap: balance`, authored newlines, `<br>`, right-to-left text, scripts without spaces,
+  hyphenation, `overflow-wrap`, `text-indent`, floats, multi-column layout and vertical writing all
+  come out as painted. Words and characters are wrapped inside those lines under
+  `text-wrap: nowrap`, so their boxes can never move a wrap.
+- **Handles whatever is in the text.** Links and marks are cloned per line the way the spec
+  defines. Block containers are split inside themselves, so lists keep their numbers. Pieces that
+  are not running text (an image, a button row, a table, a custom element, anything you ask it to
+  ignore) ride along whole. Hidden content is left alone. Underlines are carried onto word and
+  character units and still follow the link's hover.
+- **Owns nothing but the split.** Every unit gets `data-line`, `data-word` or `data-char` with its
+  index, the same index as a custom property, and a mask wrapper if you want one. Animate with the
+  Web Animations API, GSAP, Motion, or a stylesheet.
+- **Cheap.** One read phase, one write phase, no forced reflow. A 2,000-word article splits into
+  lines in about 10ms on a laptop.
+- **No dependencies.** One file, ES2022, nothing else to load.
+
+## Install
+
+```sh
+npm install kugiri
+```
+
+## Use
+
+```ts
+import { splitText } from "kugiri";
+
+const target = document.querySelector("h1");
+const split = splitText(target, { type: ["lines"], mask: "lines" });
+
+split.lines.forEach((line, index) => {
+  line.animate([{ transform: "translateY(100%)", opacity: 0 }, { transform: "none", opacity: 1 }], {
+    duration: 1000,
+    delay: index * 100,
+    easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+    fill: "both",
+  });
+});
+
+// Later, to put the original markup back:
+split.revert();
+```
+
+Or let a stylesheet do it. The split writes the index of every unit as a custom property:
+
+```ts
+splitText(target, { type: ["words"] });
+target.dataset.revealed = "";
+```
+
+```css
+[data-word] {
+  opacity: 0;
+  transform: translateY(0.6em);
+}
+
+[data-revealed] [data-word] {
+  animation: rise 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation-delay: calc(var(--word) * 30ms);
+}
+
+@keyframes rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+```
+
+Split after the fonts the text is set in have loaded (`await document.fonts.ready`), and split
+again after a resize once the reveal is over: the lines were measured for the box the text had.
+
+## API
+
+### `splitText(target, options?)`
+
+Splits `target` in place and returns a `TextSplit`.
+
+| Option    | Type                                      | Default     | What it does                                                                                                             |
+| --------- | ----------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `type`    | `("lines" \| "words" \| "chars")[]`       | `["lines"]` | The units to produce. Words and chars always sit inside lines, so `lines` comes with them.                              |
+| `mask`    | `SplitLevel \| SplitLevel[]`              | none        | The units that get a clipping wrapper (`clip-path: inset(0)`) to slide out from under. Any levels, whatever the unit you animate. |
+| `ignore`  | `string`                                  | none        | A selector for elements to leave whole: never cut into, never wrapped, never a unit.                                    |
+| `classes` | `{ lines?, words?, chars?, mask? }`       | none        | Class names to add to the units and masks, on top of the data attributes they always carry.                             |
+
+### `TextSplit`
+
+| Field    | Type            | What it holds                                                                                        |
+| -------- | --------------- | ---------------------------------------------------------------------------------------------------- |
+| `lines`  | `HTMLElement[]` | One block per painted line, in document order. A piece kept whole (a table) is one entry.            |
+| `words`  | `HTMLElement[]` | Inline-block units, one per word, punctuation attached. Empty unless `type` includes words or chars. |
+| `chars`  | `HTMLElement[]` | Inline-block units, one per grapheme cluster. Empty unless `type` includes chars.                    |
+| `masks`  | `HTMLElement[]` | The clip wrappers, if any.                                                                           |
+| `revert` | `() => void`    | Puts the original markup back.                                                                       |
+
+### Hooks written on the DOM
+
+| Where      | Attribute                                      | Custom property                     |
+| ---------- | ---------------------------------------------- | ----------------------------------- |
+| Each unit  | `data-line`, `data-word`, `data-char` (index)  | `--line`, `--word`, `--char` (index) |
+| Each mask  | `data-mask` (index)                            |                                     |
+| The target | `data-split` (the levels present)              | `--lines`, `--words`, `--chars` (counts) |
+
+Indexes count in document order, so `calc(var(--word) * 30ms)` is a stagger and
+`calc((var(--words) - var(--word)) * 30ms)` a reversed one.
+
+### What a unit is
+
+Content is classified by how it lays out, not by tag:
+
+- **Inline elements** (`a`, `em`, `strong`, spans, an inline custom element) are cut into. One that
+  wraps across lines is cloned per line, attributes included.
+- **Block containers** (`p`, `li`, headings, `blockquote`) are split inside themselves, so a list
+  keeps its markers and numbers.
+- **Everything else with content** is one piece: replaced elements, inline-blocks, ruby, flex and grid
+  rows, tables, list items with an inside marker (a `summary`), custom elements that are boxes of
+  their own, and anything matching `ignore`. A block-level piece is one unmasked line; an inline-level
+  piece is one word.
+- **Floats** stay where they are and are neither measured nor units.
+- **A `::first-line` style** is restated on the first line block, so it survives the cut and reaches
+  the units inside it.
+- **A styled `::first-letter`** (a big initial, a floated drop cap) is restated on the glyph itself,
+  because no browser keeps applying the pseudo once the first line is a block of its own, and none
+  applies it inside a word or character unit.
+- **Hidden content** (a closed `details` body, `display: none`) is left exactly as it is.
+
+## Caveats
+
+- A character split loses the kerning between letters. Every splitter does; it is inherent to
+  wrapping each glyph in its own box.
+- `revert()` restores the original markup, so state or listeners added inside the target between
+  split and revert are lost, and an inline element with an `id` is duplicated while it wraps across
+  lines.
+- The split reads `Intl.Segmenter` for words and graphemes (Chrome 87, Safari 14.1, Firefox 125).
+  Without it, words fall back to whitespace and graphemes to code points, which breaks emoji
+  sequences apart.
+- Screen readers may read a character split letter by letter. If you split a heading into
+  characters, give the target an `aria-label` with its text and `aria-hidden` on the units.
+- Word and character units are boxes, and a box cannot be shaped across its edges, so the split
+  restates each unit's painted width and the painted gap between units. In Chromium and Firefox the
+  result is exact to the sub-pixel; WebKit reports its measurements rounded, so a line can end
+  within about a pixel of where it was.
+- WebKit renders a `::first-line` without the `text-transform` it reports, then applies it once an
+  animation has touched the line. The split verifies a restated first line against the painted row
+  and drops what does not reproduce it, but a transformed `::first-line` is the one case to check by
+  eye in Safari.
+
+## Demo
+
+`npm run dev` opens the demo, which is also the test suite: about fifty cases, each split as it
+scrolls into view. **Check lines** compares every split with the lines the browser painted before
+the split, text and geometry. `npm test` runs the same check headless in Chromium, WebKit and
+Firefox.
+
+## Development
+
+```sh
+npm install          # also installs the git hooks
+npm run dev          # the demo on http://localhost:4173
+npm run check        # types and lint
+npm run format       # Biome, with fixes
+npm test             # Playwright against the demo
+npm run build        # dist/, from tsc
+```
+
+Commits follow Conventional Commits and are checked by a hook.
+
+## License
+
+MIT

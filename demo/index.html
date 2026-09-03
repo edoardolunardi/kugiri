@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>kugiri demo</title>
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body>
+    <header>
+      <h1>kugiri</h1>
+      <p>
+        A splitter that keeps the lines the browser painted. Every case below is one target in a situation running text can be
+        in. Scroll to reveal, then <strong>Check</strong>: each split is compared with the lines the browser had painted before
+        it ran. <strong>Replay</strong> reverts everything and runs it again.
+      </p>
+      <nav data-nav></nav>
+    </header>
+
+    <div class="panel">
+      <p data-readout>targets 0</p>
+      <div>
+        <button type="button" class="primary" data-action="check">Check lines</button>
+        <button type="button" data-action="replay">Replay all</button>
+      </div>
+    </div>
+
+    <!-- Lines -->
+
+    <section data-case="single-line">
+      <div><h2 class="case-title">Single line</h2><p class="case-expect">One line, one mask. Nothing to wrap.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="headline" data-target>Revealing the dynamics of life</h3></div>
+    </section>
+
+    <section data-case="balance-pre-line">
+      <div><h2 class="case-title">Balance + authored break</h2><p class="case-expect">text-wrap: balance evens the lines and the newline is a forced break. A balanced line fits with no slack, so any splitter that widens words flips it.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="headline wide balance pre-line" data-target>Build the dynamic era of structural biology
+with us, wherever the science leads</h3></div>
+    </section>
+
+    <section data-case="rag">
+      <div><h2 class="case-title">Ragged, no balance</h2><p class="case-expect">Same copy, browser rag. Each line runs to the right edge.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="headline wide" data-target>Build the dynamic era of structural biology with us, wherever the science leads</h3></div>
+    </section>
+
+    <section data-case="pretty">
+      <div><h2 class="case-title">text-wrap: pretty</h2><p class="case-expect">No orphan on the last line. The split must not reintroduce one.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="title headline-measure pretty" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</h3></div>
+    </section>
+
+    <section data-case="measure">
+      <div><h2 class="case-title">Paragraph at the measure</h2><p class="case-expect">Body copy capped at 60ch. Ordinary wrapping.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="inline-marks">
+      <div><h2 class="case-title">Inline marks across lines</h2><p class="case-expect">A link, strong, em, a superscript and a coloured span, some wrapping mid-element. No empty clones; the link stays one tab stop per line.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Proteins are not static sculptures. They <strong>breathe, flex and rearrange themselves</strong> on timescales from <em>picoseconds to seconds</em>, and it is <a href="#inline-marks" class="link dashed">that motion, not any single frozen frame, that decides what a molecule does</a> inside a cell<sup>1</sup>. <span class="mark">Colour marks wrap like any other span.</span></p></div>
+    </section>
+
+    <section data-case="br">
+      <div><h2 class="case-title">Explicit &lt;br&gt;</h2><p class="case-expect">Two br tags, three lines, whatever the width.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="headline" data-target>First line<br />second line<br />third line</h3></div>
+    </section>
+
+    <section data-case="pre-line-blank">
+      <div><h2 class="case-title">pre-line with a blank line</h2><p class="case-expect">A paragraph break inside one target: the empty line stays empty.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure pre-line" data-target>A first paragraph written as text.
+
+A second one after a blank line, which pre-line keeps.</p></div>
+    </section>
+
+    <section data-case="pre-wrap">
+      <div><h2 class="case-title">pre-wrap, double spaces</h2><p class="case-expect">Runs of spaces survive. Still wraps at the measure.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure pre-wrap" data-target>Two  spaces  between  words,   three here,
+and a newline. The rest of this sentence is long enough to wrap onto another line at the measure.</p></div>
+    </section>
+
+    <section data-case="align">
+      <div><h2 class="case-title">Centered and right aligned</h2><p class="case-expect">Alignment is inherited by the line blocks, so the rag stays where it was.</p><p class="case-result"></p></div>
+      <div class="sample rich"><p class="body measure center" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion that decides what a molecule does inside a cell.</p><p class="body measure right" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="justify">
+      <div><h2 class="case-title">Justified</h2><p class="case-expect">Word spacing stretches per line; the last line stays ragged. Each line block gets text-align-last so the stretch survives the cut.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure justify" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="narrow">
+      <div><h2 class="case-title">Narrow column</h2><p class="case-expect">Many short lines. The stagger should not drag.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body narrow" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="mono-label">
+      <div><h2 class="case-title">Tracked uppercase label</h2><p class="case-expect">Letter-spacing and uppercase. Widths must match the pre-split paint.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="mono narrow" data-target>A tracked uppercase label that runs long enough to wrap twice in a narrow box</p></div>
+    </section>
+
+    <section data-case="small-caps">
+      <div><h2 class="case-title">Small caps</h2><p class="case-expect">A synthesized variant. Same widths before and after.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure small-caps" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds.</p></div>
+    </section>
+
+    <!-- Words and chars -->
+
+    <section data-case="words" data-unit="words">
+      <div><h2 class="case-title">split=words</h2><p class="case-expect">Each word rises under its own mask, inside lines that keep the paint. Punctuation stays with its word.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="title headline-measure" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</h3></div>
+    </section>
+
+    <section data-case="chars" data-unit="chars">
+      <div><h2 class="case-title">split=chars</h2><p class="case-expect">Every grapheme is a unit, emoji included. Kerning between letters is lost; that is inherent to a char split.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="title headline-measure" data-target>Revealing the dynamics of life 🧬 with AVATAR-grade kerning</h3></div>
+    </section>
+
+    <section data-case="words-under-lines" data-unit="words" data-mask="lines">
+      <div><h2 class="case-title">split=words, mask=lines</h2><p class="case-expect">Words are the units, lines are the wrappers: each word rises from under its line's clip.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="title headline-measure" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion that decides what a molecule does inside a cell.</h3></div>
+    </section>
+
+    <section data-case="lines-unmasked" data-mask="none">
+      <div><h2 class="case-title">split=lines, mask=none</h2><p class="case-expect">No wrappers at all: the line blocks rise and fade in the open.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="css-reveal" data-unit="words" data-mask="none" data-reveal="css">
+      <div><h2 class="case-title">CSS-only reveal</h2><p class="case-expect">No script animation: the target is split into words and gets data-revealed; the stylesheet staggers off the --word index the split wrote.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure css-reveal" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <!-- Links -->
+
+    <section data-case="link-lines">
+      <div><h2 class="case-title">Underlined link across lines</h2><p class="case-expect">A solid underline through a link that wraps. Each line's clone keeps the rule; no gap at the cut.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Read the <a href="#link-lines" class="link">full account of how the pipeline turns a frozen cryo-EM map into a conformational ensemble and what that means for a drug programme</a> before the methods section.</p></div>
+    </section>
+
+    <section data-case="link-words" data-unit="words">
+      <div><h2 class="case-title">Underlined link, split=words</h2><p class="case-expect">Words are inline-blocks, which a decoration never reaches. Every word carries the rule itself and follows the hover colour.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Read the <a href="#link-words" class="link">full account of how the pipeline turns a frozen cryo-EM map into a conformational ensemble</a> before the methods section.</p></div>
+    </section>
+
+    <section data-case="link-chars" data-unit="chars">
+      <div><h2 class="case-title">Underlined link, split=chars</h2><p class="case-expect">Same rule per grapheme. Hover the link: the whole rule changes colour together.</p><p class="case-result"></p></div>
+      <div class="sample"><h3 class="subtitle headline-measure" data-target><a href="#link-chars" class="link">A heading that is entirely a link</a></h3></div>
+    </section>
+
+    <section data-case="link-nested" data-unit="words">
+      <div><h2 class="case-title">Marks inside a link, split=words</h2><p class="case-expect">The underline is declared on the link, the words sit inside em and strong. The chain in between inherits, so the rule survives.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>As the <a href="#link-nested" class="link dashed"><em>rich text</em> renderer marks up <strong>links with emphasis inside them</strong> and colour spans</a> all the time.</p></div>
+    </section>
+
+    <section data-case="link-host-words" data-unit="words">
+      <div><h2 class="case-title">Target inside a link, split=words</h2><p class="case-expect">The decoration is declared above the target. The target takes it as its own, so the words still draw it.</p><p class="case-result"></p></div>
+      <div class="sample"><a href="#link-host-words" class="link"><span class="subtitle headline-measure" style="display:block" data-target>A link long enough to wrap onto a second line, split into words this time</span></a></div>
+    </section>
+
+    <!-- Rich content -->
+
+    <section data-case="rich-mixed">
+      <div><h2 class="case-title">Rich text, anything inside</h2><p class="case-expect">Headings, paragraphs and list items split per painted line inside their own blocks; the media tile, the button row, the table and the citation ride along as one piece each.</p><p class="case-result"></p></div>
+      <div class="sample"><div class="rich body" data-target>
+        <h3>A section with everything in it</h3>
+        <p class="measure">Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p>
+        <div class="tile"></div>
+        <ol>
+          <li>Numbered items keep their numbers, because each item is split inside itself.</li>
+          <li>The second item wraps if the column is narrow enough, which on a phone it is, and keeps its number too.</li>
+          <li>Third.</li>
+        </ol>
+        <div class="buttons"><a href="#rich-mixed" class="button">Read the paper</a><a href="#rich-mixed" class="button">Contact us</a></div>
+        <table><tbody><tr><td>Method</td><td>Cryo-EM</td></tr><tr><td>Resolution</td><td>2.1 Å</td></tr></tbody></table>
+        <blockquote><p>A quote that wraps across lines inside a blockquote, which is a block of its own.</p><cite>Someone, somewhere</cite></blockquote>
+      </div></div>
+    </section>
+
+    <section data-case="ignore" data-unit="words" data-ignore="[data-keep]">
+      <div><h2 class="case-title">ignore selector, words</h2><p class="case-expect">The chip and the footnote mark are never wrapped or counted; the words around them still are.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Cryo-EM sits next to <span data-keep class="chip">MD simulation</span> in the pipeline<sup data-keep>2</sup>, and both feed the same model, which is why the chip has to travel with its line.</p></div>
+    </section>
+
+    <section data-case="inline-block">
+      <div><h2 class="case-title">Inline-block chip in the copy</h2><p class="case-expect">An atomic inline box in the flow. It cannot break inside, and wraps as a unit.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Cryo-EM sits next to <span class="chip">MD simulation</span> in the pipeline, and both feed the same model, which is why the chip has to travel with its line.</p></div>
+    </section>
+
+    <section data-case="inline-icon">
+      <div><h2 class="case-title">Inline icon mid-sentence</h2><p class="case-expect">An SVG is not text. It rides along on its line and is never pruned as an empty element.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Read the paper <span class="icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M6 3h7v7" fill="none" stroke="currentColor" stroke-width="1.5" /></svg></span> and then the follow-up <span class="icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h12M9 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg></span> which wraps this sentence past the measure.</p></div>
+    </section>
+
+    <section data-case="custom-element" data-unit="words">
+      <div><h2 class="case-title">Custom elements inline</h2><p class="case-expect">An inline custom element wraps like any inline element, so it is cut into like one; an inline-block custom element is a box of its own and stays one piece.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Proteins are not static sculptures. They breathe, flex and <demo-atom class="mark">rearrange themselves on timescales from picoseconds to seconds</demo-atom>, and it is <demo-chip class="chip">that motion</demo-chip> that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="hidden">
+      <div><h2 class="case-title">Hidden content (closed details)</h2><p class="case-expect">The summary rises whole, caret on its line; the closed body is left exactly as it is, so opening it later shows plain copy.</p><p class="case-result"></p></div>
+      <div class="sample"><div class="body measure" data-target><details><summary>A summary line long enough to wrap onto a second line when the measure is narrow</summary><p>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds.</p></details></div></div>
+    </section>
+
+    <!-- Breaking inside words -->
+
+    <section data-case="long-word">
+      <div><h2 class="case-title">Unbreakable word, overflow-wrap</h2><p class="case-expect">The browser breaks inside the word (overflow-wrap: anywhere). The cut lands inside the word, exactly where the paint broke it.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body narrow anywhere" data-target>Reference https://www.example.org/research/very-long-slug-that-never-ends-and-keeps-going-until-the-box-gives-up and Pneumonoultramicroscopicsilicovolcanoconiosis.</p></div>
+    </section>
+
+    <section data-case="hyphens">
+      <div><h2 class="case-title">hyphens: auto</h2><p class="case-expect">The browser hyphenates long words at the line end. The split keeps the break and restates the hyphen the browser drew.</p><p class="case-result"></p></div>
+      <div class="sample"><p lang="en" class="body narrow hyphens" data-target>Crystallographic characterisation of conformational heterogeneity demands extraordinarily reproducible instrumentation.</p></div>
+    </section>
+
+    <section data-case="hyphens-words" data-unit="words">
+      <div><h2 class="case-title">hyphens: auto, split=words</h2><p class="case-expect">A word broken across two lines becomes two units, the first ending in the drawn hyphen.</p><p class="case-result"></p></div>
+      <div class="sample"><p lang="en" class="body narrow hyphens" data-target>Crystallographic characterisation of conformational heterogeneity demands extraordinarily reproducible instrumentation.</p></div>
+    </section>
+
+    <section data-case="soft-hyphen">
+      <div><h2 class="case-title">Soft hyphens and &lt;wbr&gt;</h2><p class="case-expect">Manual break opportunities. A soft hyphen the browser used shows its hyphen; a wbr is never a piece.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body narrow" data-target>Crystallo&shy;graphic charac&shy;terisation of confor&shy;mational hetero&shy;geneity demands extra<wbr />ordinarily repro<wbr />ducible instru<wbr />mentation.</p></div>
+    </section>
+
+    <!-- Scripts -->
+
+    <section data-case="rtl">
+      <div><h2 class="case-title">Right-to-left (Arabic)</h2><p class="case-expect">Lines wrap from the right. The rag sits on the left and the reveal order follows the reading order.</p><p class="case-result"></p></div>
+      <div class="sample"><p dir="rtl" lang="ar" class="body measure" data-target>البروتينات ليست منحوتات ثابتة. إنها تتنفس وتنثني وتعيد ترتيب نفسها على مقاييس زمنية من البيكوثانية إلى الثواني، وهذه الحركة هي ما يحدد ما يفعله الجزيء داخل الخلية.</p></div>
+    </section>
+
+    <section data-case="cjk">
+      <div><h2 class="case-title">No spaces (Japanese)</h2><p class="case-expect">The browser wraps between characters. The segmenter finds the words, so a word split works too.</p><p class="case-result"></p></div>
+      <div class="sample"><p lang="ja" class="body measure" data-target>タンパク質は静止した彫刻ではありません。ピコ秒から秒までの時間スケールで呼吸し、屈曲し、自らを再配置します。細胞内で分子が何をするかを決めるのは、凍結された単一の瞬間ではなく、その動きなのです。</p></div>
+    </section>
+
+    <section data-case="cjk-words" data-unit="words">
+      <div><h2 class="case-title">Japanese, split=words</h2><p class="case-expect">Word units without a single space in the source.</p><p class="case-result"></p></div>
+      <div class="sample"><p lang="ja" class="body measure" data-target>タンパク質は静止した彫刻ではありません。ピコ秒から秒までの時間スケールで呼吸し、屈曲し、自らを再配置します。</p></div>
+    </section>
+
+    <section data-case="emoji">
+      <div><h2 class="case-title">Emoji and combining marks</h2><p class="case-expect">Grapheme clusters stay whole across the split.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Lab notes 👩‍🔬🧬 with a flag 🇯🇵, a skin tone 👍🏽, café naïve résumé, and Zürich, all wrapping once the sentence is long enough to need it.</p></div>
+    </section>
+
+    <section data-case="ruby">
+      <div><h2 class="case-title">Ruby annotations</h2><p class="case-expect">Ruby is inline-level and owns its base and annotation: one piece per ruby, never cut inside.</p><p class="case-result"></p></div>
+      <div class="sample"><p lang="ja" class="body narrow" data-target>東京は<ruby>日本<rt>にほん</rt></ruby>の<ruby>首都<rt>しゅと</rt></ruby>で、世界で最も人口の多い都市圏の一つです。</p></div>
+    </section>
+
+    <section data-case="vertical">
+      <div><h2 class="case-title">Vertical writing mode</h2><p class="case-expect">writing-mode: vertical-rl. Lines are columns read right to left; the line blocks stack the same way.</p><p class="case-result"></p></div>
+      <div class="sample"><p lang="ja" class="body vertical" data-target>タンパク質は静止した彫刻ではありません。ピコ秒から秒までの時間スケールで呼吸し、屈曲し、自らを再配置します。細胞内で分子が何をするかを決めるのは、その動きなのです。</p></div>
+    </section>
+
+    <!-- First letter, first line, indents, floats, columns -->
+
+    <section data-case="first-letter">
+      <div><h2 class="case-title">::first-letter</h2><p class="case-expect">A large first letter styled by the pseudo-element. It must still apply to the first line block, and the lines must not move.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure first-letter" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="drop-cap">
+      <div><h2 class="case-title">Drop cap (floated ::first-letter)</h2><p class="case-expect">The first letter floats and the first lines wrap around it. The float belongs to the first line block; the lines after it must still be shortened by it.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure drop-cap" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="first-line">
+      <div><h2 class="case-title">::first-line</h2><p class="case-expect">The first line is bold, uppercase and tracked. Its width is what it was, and the second line is plain.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure first-line" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="text-indent">
+      <div><h2 class="case-title">text-indent</h2><p class="case-expect">Only the first line is indented. Every line is a block now, so the ones after the first must be told not to indent.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure indent" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <section data-case="float-left">
+      <div><h2 class="case-title">Float at the start</h2><p class="case-expect">A floated thumbnail before the text. It is neither measured nor a unit; the line blocks after it are shortened by it exactly as the lines were.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target><span class="thumb"></span>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell. A second sentence so the copy runs past the float and back to the full measure.</p></div>
+    </section>
+
+    <section data-case="float-mid">
+      <div><h2 class="case-title">Float mid-paragraph, words</h2><p class="case-expect">A right float placed after the first sentence. It stays in its run; the words around it split as painted.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Proteins are not static sculptures. <span class="thumb right"></span>They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell. A second sentence so the copy runs past the float.</p></div>
+    </section>
+
+    <section data-case="columns">
+      <div><h2 class="case-title">Multi-column</h2><p class="case-expect">columns: 2. The last line of column one and the first of column two are different lines, though the second sits higher on the page.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body columns" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell. A second sentence so both columns have several lines to fill.</p></div>
+    </section>
+
+    <!-- Scale -->
+
+    <section data-case="stress">
+      <div><h2 class="case-title">Stress: about 220 words</h2><p class="case-expect">One target, many lines. Watch the split cost in the panel.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure" data-target>Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell. Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell. Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell. Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell. Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell. Proteins are not static sculptures. They breathe, flex and rearrange themselves on timescales from picoseconds to seconds, and it is that motion, not any single frozen frame, that decides what a molecule does inside a cell.</p></div>
+    </section>
+
+    <script type="module" src="./demo.ts"></script>
+  </body>
+</html>

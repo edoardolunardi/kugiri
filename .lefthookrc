@@ -1,0 +1,36 @@
+# Sourced by lefthook before every hook command. Git GUIs run hooks in a shell
+# that never saw `nvm use`, so resolve .nvmrc ourselves instead of trusting PATH.
+
+lefthook_node_bin() {
+	want=$(tr -d '[:space:]v' < .nvmrc 2>/dev/null)
+
+	if [ -z "$want" ]; then
+		return 1
+	fi
+
+	for root in "$NVM_DIR" "$HOME/.nvm"; do
+		if [ -z "$root" ]; then
+			continue
+		fi
+
+		# Exact pin first, then the newest install sharing its major.
+		newest=$(ls -d "$root/versions/node/v${want%%.*}".* 2>/dev/null | sort -V | tail -1)
+
+		for dir in "$root/versions/node/v$want" "$newest"; do
+			if [ -n "$dir" ] && [ -x "$dir/bin/node" ]; then
+				printf '%s\n' "$dir/bin"
+				return 0
+			fi
+		done
+	done
+
+	return 1
+}
+
+if node_bin=$(lefthook_node_bin); then
+	PATH="$node_bin:$PATH"
+	export PATH
+fi
+
+unset node_bin
+unset -f lefthook_node_bin

@@ -1,0 +1,70 @@
+{
+  "name": "kugiri",
+  "version": "0.1.0",
+  "description": "Splits text into lines, words and characters exactly where the browser already broke it.",
+  "keywords": [
+    "text",
+    "split",
+    "lines",
+    "words",
+    "chars",
+    "graphemes",
+    "typography",
+    "animation",
+    "reveal",
+    "dom"
+  ],
+  "license": "MIT",
+  "author": "Edoardo Lunardi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edoardolunardi/kugiri.git"
+  },
+  "homepage": "https://github.com/edoardolunardi/kugiri#readme",
+  "bugs": "https://github.com/edoardolunardi/kugiri/issues",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "check": "npm run check.types && npm run check.biome",
+    "check.types": "tsc --noEmit",
+    "check.biome": "biome lint --diagnostic-level=error",
+    "format": "biome check --write --unsafe",
+    "test": "playwright test",
+    "prepack": "npm run build",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
+    "@playwright/test": "^1.62.1",
+    "lefthook": "^2.1.12",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}
