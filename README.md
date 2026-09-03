@@ -25,7 +25,7 @@ script. It never decides where a line should break; the browser did that already
   Web Animations API, GSAP, Motion, or a stylesheet.
 - **Cheap.** One read phase, one write phase, no forced reflow. A 2,000-word article splits into
   lines in about 10ms on a laptop.
-- **Small.** One file, ES2022, no dependencies. About 6.7 kB minified and gzipped (18.5 kB
+- **Small.** One file, ES2022, no dependencies. About 6.8 kB minified and gzipped (18.5 kB
   minified, 6.1 kB with brotli).
 
 ## Install
@@ -183,9 +183,13 @@ npm run format       # Biome, with fixes
 npm test             # Playwright against the demo
 npm run build        # dist/, from tsc
 npm run build.demo   # dist-demo/, the static demo published to GitHub Pages
+npm run release -- patch|minor|major   # changelog, size, version, tag, push, npm, GitHub release
 ```
 
-Commits follow Conventional Commits and are checked by a hook.
+Commits follow Conventional Commits and are checked by a hook. A release is one command: it rolls
+the changelog's Unreleased section into a dated version, restates the size above, bumps and tags,
+pushes, publishes to npm and opens a GitHub release. Try it with `--dry-run` first. Instructions
+for agents live in `AGENTS.md` and `.agents/skills/`.
 
 ## License
 

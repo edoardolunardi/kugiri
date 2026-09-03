@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `npm run release -- patch|minor|major`: one command that rolls this changelog,
+  restates the size in the README and the demo, bumps, tags, pushes, publishes to
+  npm and opens a GitHub release. `AGENTS.md` and `.agents/skills/` document how to
+  develop, test and release the library.
+
 ### Changed
 
 - Only text is split. A block-level piece that is not running text (a media
