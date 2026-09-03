@@ -24,7 +24,8 @@ script. It never decides where a line should break; the browser did that already
   Web Animations API, GSAP, Motion, or a stylesheet.
 - **Cheap.** One read phase, one write phase, no forced reflow. A 2,000-word article splits into
   lines in about 10ms on a laptop.
-- **No dependencies.** One file, ES2022, nothing else to load.
+- **Small.** One file, ES2022, no dependencies. About 6.4 kB minified and gzipped (17.5 kB
+  minified, 5.8 kB with brotli).
 
 ## Install
 

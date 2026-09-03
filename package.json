@@ -50,6 +50,7 @@
     "dev": "vite",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "build.demo": "vite build --base=/kugiri/",
+    "size": "npm run build --silent && npx esbuild dist/index.js --minify --format=esm --log-level=silent | gzip -9 | wc -c",
     "check": "npm run check.types && npm run check.biome",
     "check.types": "tsc --noEmit",
     "check.biome": "biome lint --diagnostic-level=error",
