@@ -6,6 +6,29 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Only text is split. A block-level piece that is not running text (a media
+  tile, a button row, a table, a box-like custom element, a `summary`, a block
+  matching `ignore`) used to be one unmasked line, and was revealed as if it
+  were text; it is now left exactly where it is and is not a unit at all, so
+  `lines`, `words` and `chars` hold text units only. An inline-level piece
+  still rides along inside its line and still counts as one word.
+- A float is no longer left inside the line block the cut dropped it in, where
+  the line's animation carried it along. It is put back in front of the block
+  of the line it floated beside, at the same top, so the lines still flow
+  around it as painted and nothing animates it.
+- A floated drop cap (a `::first-letter` with `float`) is a float like any
+  other: its restated glyph now sits in front of the first line block instead
+  of inside it, where the line's mask clipped it to one line's height during
+  the reveal and the line's animation moved it.
+- A word or char split of a paragraph with a floated drop cap no longer widens
+  the first word by the glyph's box: the word is measured without the glyph,
+  the glyph has no extent among the graphemes, and the char unit it leaves is
+  dropped rather than kept as an empty unit.
+- A run with nothing to split (a lone float, an ignored element, a `<br>`) is
+  left exactly as it is instead of becoming an empty line.
+
 ## [0.1.0] - 2026-09-03
 
 ### Added

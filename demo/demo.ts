@@ -43,12 +43,45 @@ const collapse = (text: string) => text.replace(/\s+/g, " ").trim();
 const isLevel = (value: string | null | undefined): value is SplitLevel =>
   value === "lines" || value === "words" || value === "chars";
 
+/** Containers whose inline content lays out as lines of its own, the same set the splitter recurses into. */
+const BLOCK_CONTAINERS = new Set(["block", "list-item", "flow-root", "table-cell", "table-caption"]);
+
+const isInlineLevel = (display: string) => display.startsWith("inline") || display === "contents" || display === "ruby";
+
+/**
+ * A block-level child of a block container that is not running text: a table, a button row, a
+ * box-like custom element, a list item with an inside marker, or a block the case asks to ignore.
+ * The splitter leaves such an element out of the split, so its text is no painted line either.
+ * Anything inside an inline piece (a ruby's annotation) is part of that piece, whatever its display.
+ */
+function isWholeBlock(element: HTMLElement, target: HTMLElement, ignore: string | undefined): boolean {
+  const parent = element.parentElement;
+
+  if (!parent || (parent !== target && !BLOCK_CONTAINERS.has(getComputedStyle(parent).display))) {
+    return false;
+  }
+
+  const style = getComputedStyle(element);
+
+  if (isInlineLevel(style.display) || style.getPropertyValue("float") !== "none") {
+    return false;
+  }
+
+  return (
+    (ignore !== undefined && element.matches(ignore)) ||
+    element.tagName.includes("-") ||
+    (style.display === "list-item" && style.listStylePosition === "inside") ||
+    !BLOCK_CONTAINERS.has(style.display)
+  );
+}
+
 /**
  * The lines the browser painted, read off an unsplit target the way the splitter reads them, but
  * independently: consecutive words' rects, a new line where a rect moves to a later line, back to an
- * earlier one, or back to the line start. Hidden content is laid out but not painted, so it is skipped.
+ * earlier one, or back to the line start. Hidden content is laid out but not painted, so it is
+ * skipped, and so is a block-level piece that is not text, since the split never touches it.
  */
-function paintedLines(target: HTMLElement, relativeTo: HTMLElement = target): Painted {
+function paintedLines(target: HTMLElement, relativeTo: HTMLElement = target, ignore?: string): Painted {
   const style = getComputedStyle(relativeTo);
   const vertical = style.writingMode.startsWith("vertical");
   const rtl = style.direction === "rtl";
@@ -57,7 +90,9 @@ function paintedLines(target: HTMLElement, relativeTo: HTMLElement = target): Pa
   const acrossEnd = (rect: DOMRect) => (vertical ? (leftward ? -rect.left : rect.right) : rect.bottom);
   const along = (rect: DOMRect) => (vertical ? rect.top : rtl ? -rect.right : rect.left);
   const walker = document.createTreeWalker(target, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, (node) =>
-    node instanceof HTMLElement && !node.checkVisibility() ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+    node instanceof HTMLElement && (!node.checkVisibility() || isWholeBlock(node, target, ignore))
+      ? NodeFilter.FILTER_REJECT
+      : NodeFilter.FILTER_ACCEPT
   );
   const lines: string[] = [];
   const ends: { x: number; y: number }[] = [];
@@ -276,8 +311,8 @@ function keepsGeometry(before: Painted, target: HTMLElement, lines: HTMLElement[
 }
 
 /**
- * True when the split lines cover the painted ones in order. A piece kept whole (a table) may span
- * several painted lines, and a hyphenated line end gains the hyphen the browser only drew, so the
+ * True when the split lines cover the painted ones in order. A hyphenated line end gains the hyphen
+ * the browser only drew, and an inline piece kept whole may join two painted words, so the
  * comparison ignores spacing and a trailing hyphen.
  */
 function coversPainted(expected: string[], actual: string[]): boolean {
@@ -299,6 +334,29 @@ function coversPainted(expected: string[], actual: string[]): boolean {
   }
 
   return index === expected.length;
+}
+
+/**
+ * A split line's text, with the text of the floats the split put back in front of it (a drop cap's
+ * glyph), which the painted lines read in place on that line.
+ */
+function lineText(line: HTMLElement): string {
+  let outer: Element = line;
+  let leading = "";
+
+  while (outer.parentElement?.hasAttribute("data-mask")) {
+    outer = outer.parentElement;
+  }
+
+  for (let node = outer.previousSibling; node; node = node.previousSibling) {
+    if (node instanceof HTMLElement && getComputedStyle(node).float !== "none") {
+      leading = (node.textContent ?? "") + leading;
+    } else if (!(node instanceof Text && !node.data.trim())) {
+      break;
+    }
+  }
+
+  return leading + (line.textContent ?? "");
 }
 
 class Demo {
@@ -368,7 +426,7 @@ class Demo {
   /** Painted lines are read before any split, in the real face; every target then waits for the viewport. */
   start = () => {
     for (const reveal of this.reveals) {
-      reveal.expected = paintedLines(reveal.target);
+      reveal.expected = paintedLines(reveal.target, reveal.target, reveal.ignore);
       this.observer.observe(reveal.target);
     }
 
@@ -458,12 +516,12 @@ class Demo {
 
     for (const reveal of this.reveals) {
       const result = reveal.section.querySelector<HTMLElement>(".case-result");
-      const actual = reveal.split ? reveal.split.lines.map((line) => collapse(line.textContent ?? "")).filter(Boolean) : [];
+      const actual = reveal.split ? reveal.split.lines.map((line) => collapse(lineText(line))).filter(Boolean) : [];
       const geometry = reveal.split ? keepsGeometry(reveal.expected, reveal.target, reveal.split.lines) : null;
       let status = "ok";
       let verdict: string;
 
-      if (actual.length === 0) {
+      if (!reveal.split) {
         status = "pending";
         verdict = "not split yet";
       } else if (!coversPainted(reveal.expected.lines, actual)) {

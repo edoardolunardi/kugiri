@@ -1,9 +1,11 @@
 // kugiri: a text splitter that keeps the lines the browser painted. Lines are read off the text itself
 // (`Range.getClientRects()` per word) and cut with `Range.extractContents()`, so nothing about the
 // layout changes before it is measured; words and graphemes are wrapped inside those lines, under
-// `text-wrap: nowrap`, so their inline-block boxes can never move a wrap either. Anything that is
-// not running text (an image, a button row, a table, a custom element, an ignored element, hidden
-// content) is never cut into: it rides along as one piece.
+// `text-wrap: nowrap`, so their inline-block boxes can never move a wrap either. Only text is split:
+// an inline piece that is not text (an icon, a chip, an ignored element) is never cut into and rides
+// along inside its line, and a block-level one (a media tile, a button row, a table, hidden
+// content) is left exactly where it is and is no unit at all. A float is put back in front of the
+// line it floated beside, so the lines still flow around it and nothing animates it.
 //
 // Two phases, never interleaved: every layout and style read happens first, against a layout that
 // is still clean, and every DOM write after, so a split of a whole article forces no reflow at all.
@@ -99,6 +101,8 @@ type RunPlan = {
   anchor: Node | null;
   starts: Boundary[];
   pieces: Piece[];
+  /** The floats in the run, each with the index of the line it floated beside. */
+  floats: { node: HTMLElement; line: number }[];
   along: (rect: DOMRect) => Span;
   justify: boolean;
   /** The container indents its first line, which every line block after the first would repeat. */
@@ -106,7 +110,8 @@ type RunPlan = {
   sink: Sink;
 };
 
-type Item = { run: RunPlan } | { block: HTMLElement; items: Item[] } | { atom: HTMLElement };
+/** What a container holds that is split: its runs of inline content, and the block containers split in turn. */
+type Item = { run: RunPlan } | { block: HTMLElement; items: Item[] };
 
 type Context = {
   target: HTMLElement;
@@ -295,9 +300,11 @@ function displayOf(element: Element, context: Context): string {
  * cut reaches it; block containers lay out their own lines and are split as targets of their own;
  * everything else is one piece, which covers replaced elements, inline-blocks, ruby, flex and grid
  * rows, tables, list items with an inside marker (a summary's caret is inline content on its first
- * line), custom elements that are boxes of their own, and whatever the caller asked to ignore. A
- * float is out of the flow: it stays where it is in the run and is neither measured nor a unit.
- * Hidden content is left exactly as it is.
+ * line), custom elements that are boxes of their own, and whatever the caller asked to ignore. An
+ * inline-level piece rides along inside its line; a block-level one is not text and is left out of
+ * the split altogether. A float is out of the flow: it is neither text nor a unit, and is put back
+ * in front of the line it floated beside so nothing animates it. Hidden content is left exactly as
+ * it is.
  */
 function classify(element: Element, context: Context): Kind {
   const known = context.kinds.get(element);
@@ -426,7 +433,15 @@ function planRun(container: Element, from: number, to: number, context: Context)
   const range = document.createRange();
   const starts: Boundary[] = [];
   const pieces: Piece[] = [];
+  /** Where each line's first measured rect starts across the block, the first line's kept apart. */
+  const startRows: number[] = [];
+  let firstRow: number | null = null;
+  /** The floats met in the run, each with the block-axis start of its margin box, to find its line by. */
+  const floats: { node: HTMLElement; top: number }[] = [];
   let previous: DOMRect | null = null;
+  // A floated `::first-letter` is a box beside the first word, not part of its extent: the word is
+  // measured without that glyph, which the write phase lifts out as a float of its own.
+  let dropCap = from === 0 && getComputedStyle(container, "::first-letter").getPropertyValue("float") !== "none";
 
   // A new line starts where a piece lands on a later line, lands entirely before the previous one
   // (the next column), or sits lower on the same line while back at the line start (after a
@@ -445,7 +460,10 @@ function planRun(container: Element, from: number, to: number, context: Context)
 
       if (later || earlier || back) {
         starts.push(boundary);
+        startRows.push(across(rect).start);
       }
+    } else {
+      firstRow = across(rect).start;
     }
 
     previous = rect;
@@ -484,8 +502,19 @@ function planRun(container: Element, from: number, to: number, context: Context)
   const measure = (text: Text, word: Segment) => {
     const start = word.index;
     const end = start + word.length;
+    let glyphLength = 0;
 
-    range.setStart(text, start);
+    if (dropCap) {
+      dropCap = false;
+
+      const glyph = graphemes(text.data.slice(start, end)).next().value;
+
+      if (glyph && glyph.length < word.length) {
+        glyphLength = glyph.length;
+      }
+    }
+
+    range.setStart(text, start + glyphLength);
     range.setEnd(text, end);
 
     const rows = rowsOf(range.getClientRects());
@@ -503,11 +532,17 @@ function planRun(container: Element, from: number, to: number, context: Context)
 
       // Grapheme extents are the distances between where consecutive graphemes start, the last one
       // reaching the word's end: engines round a lone grapheme's width, but its position is exact,
-      // so the boxes tile the word exactly even where each rect alone would not.
+      // so the boxes tile the word exactly even where each rect alone would not. A drop cap glyph
+      // has no extent in the word, since it floats beside it.
       if (context.wrapChars) {
         const starts: number[] = [];
 
         for (const grapheme of graphemes(text.data.slice(start, end))) {
+          if (grapheme.index < glyphLength) {
+            starts.push(Number.NaN);
+            continue;
+          }
+
           range.setStart(text, start + grapheme.index);
           range.setEnd(text, start + grapheme.index + grapheme.length);
 
@@ -575,6 +610,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
           next: rows[row].end - rows[row].start,
         },
       });
+      startRows.push(across(rows[row].rect).start);
       from = breaks;
     }
 
@@ -630,7 +666,19 @@ function planRun(container: Element, from: number, to: number, context: Context)
 
     const kind = classify(node, context);
 
-    if (kind === "hidden" || kind === "float") {
+    if (kind === "hidden") {
+      return;
+    }
+
+    // A float is out of the flow: its margin box sits at the top of the line it floated beside,
+    // which is what the write phase puts it back in front of.
+    if (kind === "float") {
+      if (node instanceof HTMLElement) {
+        const margin = Number.parseFloat(getComputedStyle(node).marginBlockStart) || 0;
+
+        floats.push({ node, top: across(node.getBoundingClientRect()).start - margin });
+      }
+
       return;
     }
 
@@ -649,6 +697,8 @@ function planRun(container: Element, from: number, to: number, context: Context)
       return;
     }
 
+    // A pseudo first letter never reaches past a box that comes first on the line.
+    dropCap = false;
     consider(rect, { before: node });
 
     if (node instanceof HTMLElement && !(context.ignore && node.matches(context.ignore))) {
@@ -659,6 +709,27 @@ function planRun(container: Element, from: number, to: number, context: Context)
   for (const node of nodes) {
     walk(node);
   }
+
+  // A run with nothing to split (a lone float, an ignored element, a <br>) is left exactly as it is.
+  if (pieces.length === 0) {
+    return null;
+  }
+
+  // The line a float belongs to is the one whose first rect starts nearest its margin-box top: a
+  // float sits at the top of its line box, which is above that line's glyphs by the half-leading
+  // and below the previous line's by the rest of the line height.
+  const rows = [firstRow ?? Number.NaN, ...startRows];
+  const lineOf = (top: number) => {
+    let best = 0;
+
+    rows.forEach((row, index) => {
+      if (Math.abs(row - top) <= Math.abs(rows[best] - top)) {
+        best = index;
+      }
+    });
+
+    return best;
+  };
 
   // How far the first row of the run reaches along the line, over every word that sits on it.
   const firstRowEndOf = (): number => {
@@ -820,6 +891,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
     anchor: container.childNodes[to] ?? null,
     starts,
     pieces,
+    floats: floats.map((entry) => ({ node: entry.node, line: lineOf(entry.top) })),
     along,
     justify,
     indent,
@@ -895,7 +967,12 @@ function axes(style: CSSStyleDeclaration): { along: (rect: DOMRect) => Span; acr
   };
 }
 
-/** The read phase for a container: its runs, measured, and its block children, planned in turn. */
+/**
+ * The read phase for a container: its runs, measured, and its block children, planned in turn. A
+ * block-level child that is not running text (a media tile, a button row, a table, a box-like
+ * custom element, hidden content) ends the run around it and is otherwise left alone: it is not
+ * text, so it is neither cut into nor a unit.
+ */
 function planContainer(container: Element, context: Context): Item[] {
   const children = Array.from(container.childNodes);
   const items: Item[] = [];
@@ -922,8 +999,6 @@ function planContainer(container: Element, context: Context): Item[] {
 
       if (kind === "block" && element instanceof HTMLElement) {
         items.push({ block: element, items: planContainer(element, context) });
-      } else if (kind === "atom" && element instanceof HTMLElement) {
-        items.push({ atom: element });
       }
 
       return;
@@ -1306,6 +1381,19 @@ function cutRun(run: RunPlan, context: Context) {
     }
   });
 
+  // A float is not text: it is lifted out of the line the cut left it in and put back in front of
+  // the block of the line it floated beside, at the same top, so the lines still flow around it as
+  // painted while no unit, mask or animation carries it along.
+  for (const { node, line } of run.floats) {
+    let outer: Node = sink.lines[Math.min(line, sink.lines.length - 1)];
+
+    while (outer.parentNode && outer.parentNode !== container) {
+      outer = outer.parentNode;
+    }
+
+    container.insertBefore(node, outer);
+  }
+
   // The one read a cut allows itself, and only where a word was broken: the fragments no longer
   // break, so what each one lost against the room it had is the hyphen the browser drew.
   for (const entry of pending) {
@@ -1368,7 +1456,7 @@ function settleFirstLine(entry: Context["firstLines"][number]) {
  * sees first; and it is lifted out of a word or char unit, since a float inside an inline-block
  * would be contained by it instead of letting the following lines flow around it.
  */
-function restateFirstLetter(line: HTMLElement, firstLetter: FirstLetter, context: Context) {
+function restateFirstLetter(line: HTMLElement, firstLetter: FirstLetter, split: TextSplit, context: Context) {
   const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
 
@@ -1383,10 +1471,11 @@ function restateFirstLetter(line: HTMLElement, firstLetter: FirstLetter, context
   const start = node.data.search(/\S/);
   const unit = node.parentElement;
   const floated = /(?:^|;)float:(?!none)/.test(firstLetter.declarations);
+  const charUnit = unit && context.created.has(unit) && split.chars.includes(unit) ? unit : null;
 
   // A char split already has the glyph in a span of its own.
-  if (unit && context.created.has(unit) && unit.hasAttribute("data-char") && !floated) {
-    unit.style.cssText = `${unit.style.cssText};${firstLetter.declarations}`;
+  if (charUnit && !floated) {
+    context.created.set(charUnit, `${context.created.get(charUnit)};${firstLetter.declarations}`);
     return;
   }
 
@@ -1408,17 +1497,41 @@ function restateFirstLetter(line: HTMLElement, firstLetter: FirstLetter, context
     return;
   }
 
+  // A floated glyph is a float like any other: it goes in front of the first line's block, or its
+  // mask, where no unit, mask or animation reaches it, at the same top, so the lines still flow
+  // around it. An empty atomic inline takes its place at the line start, to be what the pseudo sees.
   let outer: HTMLElement = glyph;
 
   while (outer.parentElement && outer.parentElement !== line && context.created.has(outer.parentElement)) {
     outer = outer.parentElement;
   }
 
+  const anchor = outer === glyph ? glyph.nextSibling : outer;
   const blocker = document.createElement("span");
+  let lineOuter: HTMLElement = line;
+
+  while (lineOuter.parentElement && context.created.has(lineOuter.parentElement)) {
+    lineOuter = lineOuter.parentElement;
+  }
 
   blocker.style.display = "inline-block";
-  line.insertBefore(glyph, outer === glyph ? glyph.nextSibling : outer);
-  line.insertBefore(blocker, glyph);
+  lineOuter.parentNode?.insertBefore(glyph, lineOuter);
+  line.insertBefore(blocker, anchor);
+
+  // The char unit the glyph came out of is empty now, and a float is no unit: it goes, mask and all.
+  if (charUnit) {
+    const mask = charUnit.parentElement;
+    const doomed = mask && context.created.has(mask) && split.masks.includes(mask) ? mask : charUnit;
+
+    doomed.remove();
+    context.created.delete(charUnit);
+    split.chars.splice(split.chars.indexOf(charUnit), 1);
+
+    if (doomed !== charUnit) {
+      context.created.delete(doomed);
+      split.masks.splice(split.masks.indexOf(doomed), 1);
+    }
+  }
 }
 
 /** The write phase for a container: runs cut last to first, block children written in turn, all merged in document order. */
@@ -1435,18 +1548,8 @@ function writeItems(items: Item[], into: Sink, context: Context) {
       into.words.push(...item.run.sink.words);
       into.chars.push(...item.run.sink.chars);
       into.masks.push(...item.run.sink.masks);
-    } else if ("block" in item) {
-      writeItems(item.items, into, context);
     } else {
-      into.lines.push(item.atom);
-
-      if (context.wrapWords) {
-        into.words.push(item.atom);
-      }
-
-      if (context.wrapChars) {
-        into.chars.push(item.atom);
-      }
+      writeItems(item.items, into, context);
     }
   }
 }
@@ -1572,11 +1675,13 @@ export function splitText(target: HTMLElement, options: SplitOptions = {}): Text
   const items = planContainer(target, context);
 
   writeItems(items, split, context);
-  mark(split, options, context);
 
+  // Before the marks, since a floated glyph leaves the units and the rest are numbered without it.
   for (const { line, firstLetter } of context.firstLetters) {
-    restateFirstLetter(line, firstLetter, context);
+    restateFirstLetter(line, firstLetter, split, context);
   }
+
+  mark(split, options, context);
 
   for (const entry of context.firstLines) {
     settleFirstLine(entry);

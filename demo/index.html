@@ -13,7 +13,7 @@
         A splitter that keeps the lines the browser painted. Every case below is one target in a situation running text can be
         in. Scroll to reveal, then <strong>Check</strong>: each split is compared with the lines the browser had painted before
         it ran. <strong>Replay</strong> reverts everything and runs it again. The whole library is one ES module,
-        about 6.4 kB minified and gzipped, with no dependencies.
+        about 6.7 kB minified and gzipped, with no dependencies.
       </p>
       <nav data-nav></nav>
     </header>
@@ -159,7 +159,7 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
     <!-- Rich content -->
 
     <section data-case="rich-mixed">
-      <div><h2 class="case-title">Rich text, anything inside</h2><p class="case-expect">Headings, paragraphs and list items split per painted line inside their own blocks; the media tile, the button row, the table and the citation ride along as one piece each.</p><p class="case-result"></p></div>
+      <div><h2 class="case-title">Rich text, anything inside</h2><p class="case-expect">Headings, paragraphs, list items and the citation split per painted line inside their own blocks; the media tile, the button row and the table are not text, so they are left exactly where they are and are not units.</p><p class="case-result"></p></div>
       <div class="sample"><div class="rich body" data-target>
         <h3>A specimen with everything in it</h3>
         <p class="measure">Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p>
@@ -196,8 +196,8 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
     </section>
 
     <section data-case="hidden">
-      <div><h2 class="case-title">Hidden content (closed details)</h2><p class="case-expect">The summary rises whole, caret on its line; the closed body is left exactly as it is, so opening it later shows plain copy.</p><p class="case-result"></p></div>
-      <div class="sample"><div class="body measure" data-target><details><summary>A note on the casting of this face, long enough to wrap onto a second line when the measure is narrow</summary><p>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></details></div></div>
+      <div><h2 class="case-title">Hidden content (closed details)</h2><p class="case-expect">The paragraph splits. The summary is a box of its own (its caret is inline content on its first line) and the closed body is hidden: neither is text to split, so both are left exactly as they are and are not units, and opening the note later shows plain copy.</p><p class="case-result"></p></div>
+      <div class="sample"><div class="body measure" data-target><p>A specimen sheet shows the face at every size it is cast in, with a note on the casting folded away under it.</p><details><summary>A note on the casting of this face, long enough to wrap onto a second line when the measure is narrow</summary><p>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></details></div></div>
     </section>
 
     <!-- Breaking inside words -->
@@ -262,8 +262,18 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
     </section>
 
     <section data-case="drop-cap">
-      <div><h2 class="case-title">Drop cap (floated ::first-letter)</h2><p class="case-expect">The first letter floats and the first lines wrap around it. The float belongs to the first line block; the lines after it must still be shortened by it.</p><p class="case-result"></p></div>
+      <div><h2 class="case-title">Drop cap (floated ::first-letter)</h2><p class="case-expect">The first letter floats and the first lines wrap around it. The floated glyph is put in front of the first line block like any float, so no mask clips it and the reveal never moves it; the lines after it must still be shortened by it.</p><p class="case-result"></p></div>
       <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+    </section>
+
+    <section data-case="drop-cap-words" data-unit="words">
+      <div><h2 class="case-title">Drop cap, split=words</h2><p class="case-expect">The first word is measured without its floated glyph, so the rest of the word keeps its painted width and the line does not shift.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+    </section>
+
+    <section data-case="drop-cap-chars" data-unit="chars">
+      <div><h2 class="case-title">Drop cap, split=chars</h2><p class="case-expect">The glyph leaves its char unit to float in front of the first line block, and that unit goes with it; the graphemes after it keep their painted extents.</p><p class="case-result"></p></div>
+      <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></div>
     </section>
 
     <section data-case="first-line">
@@ -277,12 +287,12 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
     </section>
 
     <section data-case="float-left">
-      <div><h2 class="case-title">Float at the start</h2><p class="case-expect">A floated thumbnail before the text. It is neither measured nor a unit; the line blocks after it are shortened by it exactly as the lines were.</p><p class="case-result"></p></div>
+      <div><h2 class="case-title">Float at the start</h2><p class="case-expect">A floated thumbnail before the text. It is not text, so it is not a unit and the reveal never moves it: it is put back in front of the first line block, which the lines after it are shortened by exactly as they were.</p><p class="case-result"></p></div>
       <div class="sample"><p class="body measure" data-target><span class="thumb"></span>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. A second sentence so the copy runs past the float and back to the full measure.</p></div>
     </section>
 
     <section data-case="float-mid">
-      <div><h2 class="case-title">Float mid-paragraph, words</h2><p class="case-expect">A right float placed after the first sentence. It stays in its run; the words around it split as painted.</p><p class="case-result"></p></div>
+      <div><h2 class="case-title">Float mid-paragraph, words</h2><p class="case-expect">A right float placed after the first sentence. It is put back in front of the line it floated beside, untouched by the reveal; the words around it split as painted.</p><p class="case-result"></p></div>
       <div class="sample"><p class="body measure" data-target>Type is not a silent thing. <span class="thumb right"></span>Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. A second sentence so the copy runs past the float.</p></div>
     </section>
 

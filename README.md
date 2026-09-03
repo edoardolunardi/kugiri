@@ -15,17 +15,18 @@ script. It never decides where a line should break; the browser did that already
   come out as painted. Words and characters are wrapped inside those lines under
   `text-wrap: nowrap`, so their boxes can never move a wrap.
 - **Handles whatever is in the text.** Links and marks are cloned per line the way the spec
-  defines. Block containers are split inside themselves, so lists keep their numbers. Pieces that
-  are not running text (an image, a button row, a table, a custom element, anything you ask it to
-  ignore) ride along whole. Hidden content is left alone. Underlines are carried onto word and
-  character units and still follow the link's hover.
+  defines. Block containers are split inside themselves, so lists keep their numbers. Only text is
+  split: an inline piece that is not text (an icon, a chip, anything you ask it to ignore) rides
+  along whole inside its line, and a block-level one (an image, a button row, a table) is left
+  exactly where it is and is never a unit. Hidden content is left alone. Underlines are carried
+  onto word and character units and still follow the link's hover.
 - **Owns nothing but the split.** Every unit gets `data-line`, `data-word` or `data-char` with its
   index, the same index as a custom property, and a mask wrapper if you want one. Animate with the
   Web Animations API, GSAP, Motion, or a stylesheet.
 - **Cheap.** One read phase, one write phase, no forced reflow. A 2,000-word article splits into
   lines in about 10ms on a laptop.
-- **Small.** One file, ES2022, no dependencies. About 6.4 kB minified and gzipped (17.5 kB
-  minified, 5.8 kB with brotli).
+- **Small.** One file, ES2022, no dependencies. About 6.7 kB minified and gzipped (18.5 kB
+  minified, 6.1 kB with brotli).
 
 ## Install
 
@@ -100,7 +101,7 @@ Splits `target` in place and returns a `TextSplit`.
 
 | Field    | Type            | What it holds                                                                                        |
 | -------- | --------------- | ---------------------------------------------------------------------------------------------------- |
-| `lines`  | `HTMLElement[]` | One block per painted line, in document order. A piece kept whole (a table) is one entry.            |
+| `lines`  | `HTMLElement[]` | One block per painted line of text, in document order.                                               |
 | `words`  | `HTMLElement[]` | Inline-block units, one per word, punctuation attached. Empty unless `type` includes words or chars. |
 | `chars`  | `HTMLElement[]` | Inline-block units, one per grapheme cluster. Empty unless `type` includes chars.                    |
 | `masks`  | `HTMLElement[]` | The clip wrappers, if any.                                                                           |
@@ -125,16 +126,21 @@ Content is classified by how it lays out, not by tag:
   wraps across lines is cloned per line, attributes included.
 - **Block containers** (`p`, `li`, headings, `blockquote`) are split inside themselves, so a list
   keeps its markers and numbers.
-- **Everything else with content** is one piece: replaced elements, inline-blocks, ruby, flex and grid
-  rows, tables, list items with an inside marker (a `summary`), custom elements that are boxes of
-  their own, and anything matching `ignore`. A block-level piece is one unmasked line; an inline-level
-  piece is one word.
-- **Floats** stay where they are and are neither measured nor units.
+- **Everything else with content** is one piece, never cut into: replaced elements, inline-blocks,
+  ruby, flex and grid rows, tables, list items with an inside marker (a `summary`), custom elements
+  that are boxes of their own, and anything matching `ignore`. An inline-level piece rides along
+  inside its line and, unless it matches `ignore`, counts as one word. A block-level piece is not
+  text: it is left exactly where it is and is not a unit at all, so a table or a button row is never
+  revealed as if it were a line.
+- **Floats** are not text, so they are not units and nothing animates them: a float is put back in
+  front of the line block it floated beside, at the same top, so the lines after it are still
+  shortened by it exactly as painted.
 - **A `::first-line` style** is restated on the first line block, so it survives the cut and reaches
   the units inside it.
 - **A styled `::first-letter`** (a big initial, a floated drop cap) is restated on the glyph itself,
   because no browser keeps applying the pseudo once the first line is a block of its own, and none
-  applies it inside a word or character unit.
+  applies it inside a word or character unit. A floated drop cap is then a float like any other: it
+  sits in front of the first line block, unclipped and unanimated, and the lines flow around it.
 - **Hidden content** (a closed `details` body, `display: none`) is left exactly as it is.
 
 ## Caveats
