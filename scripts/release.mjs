@@ -1,25 +1,22 @@
-// Cuts a release in one go: checks the tree, runs the checks and the suite, rolls the changelog's
-// Unreleased section into a dated version section, restates the library size in the README and the
-// demo, bumps the version, commits, tags, pushes, publishes to npm and opens a GitHub release.
+// Cuts a release: checks the tree, runs the checks and the suite, rolls the changelog's Unreleased
+// section into a dated version section, restates the library size in the README and the demo,
+// bumps the version, commits, tags and pushes. The tag starts the Release workflow, which publishes
+// to npm through trusted publishing and lists the GitHub release, so nothing here needs an npm
+// login or a one-time password.
 //
-//   npm run release -- patch|minor|major|<x.y.z> [--otp=<code>] [--dry-run] [--skip-tests]
+//   npm run release -- patch|minor|major|<x.y.z> [--dry-run] [--skip-tests]
 //
-// npm asks for a one-time password on publish when the account has two-factor auth, which it
-// should; pass it with --otp so the run does not stop there. A dry run does every read and every
-// check and prints what it would write, without touching a file, git, npm or GitHub. Nothing here
-// is part of the library.
+// A dry run does every read and every check and prints what it would write, without touching a
+// file or git. Nothing here is part of the library.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import process from "node:process";
 import { kb, sizes } from "./size.mjs";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const skipTests = args.includes("--skip-tests");
-const otp = args.find((arg) => arg.startsWith("--otp="))?.slice("--otp=".length);
 const bump = args.find((arg) => !arg.startsWith("--"));
 
 const fail = (message) => {
@@ -55,7 +52,7 @@ const quietly = (command) => {
 // The version asked for.
 
 if (!bump) {
-  fail("usage: npm run release -- patch|minor|major|<x.y.z> [--otp=<code>] [--dry-run] [--skip-tests]");
+  fail("usage: npm run release -- patch|minor|major|<x.y.z> [--dry-run] [--skip-tests]");
 }
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
@@ -76,8 +73,9 @@ if (!/^\d+\.\d+\.\d+$/.test(next)) {
 
 const tag = `v${next}`;
 const today = new Date().toISOString().slice(0, 10);
+const repo = (pkg.repository?.url ?? "").replace(/^git\+/, "").replace(/\.git$/, "");
 
-// The tree: on main, clean, not behind the remote, tag free, logged in to npm.
+// The tree: on main, clean, not behind the remote, tag free.
 
 step(`preflight for ${current} -> ${next}${dryRun ? " (dry run)" : ""}`);
 
@@ -107,17 +105,7 @@ if (quietly(["git", "rev-parse", "--verify", "--quiet", `refs/tags/${tag}`]) !==
   fail(`tag ${tag} already exists`);
 }
 
-const npmUser = quietly(["npm", "whoami"]);
-
-if (!npmUser) {
-  fail("not logged in to npm; run `npm login` first");
-}
-
-const hasGh = spawnSync("gh", ["auth", "status"], { stdio: "ignore" }).status === 0;
-
-console.log(
-  `on main at ${read(["git", "rev-parse", "--short", "HEAD"])}, npm user ${npmUser}, gh ${hasGh ? "ready" : "not available"}`
-);
+console.log(`on main at ${read(["git", "rev-parse", "--short", "HEAD"])}`);
 
 // The changelog: what Unreleased holds becomes the new version's section.
 
@@ -180,7 +168,7 @@ if (demoSized === demo && !demo.includes(`about ${size.gzipped} minified and gzi
   fail("could not find the size sentence in demo/index.html");
 }
 
-// The writes, then git, npm and GitHub.
+// The writes, then git. The push of the tag hands over to the Release workflow.
 
 const section = `## [Unreleased]\n\n## [${next}] - ${today}\n\n${notes}\n\n`;
 const rolled = changelog.replace(/^## \[Unreleased\]\n[\s\S]*?(?=^## \[)/m, section);
@@ -193,10 +181,7 @@ if (dryRun) {
   );
   console.log(`package.json, package-lock.json: version ${next}`);
   console.log(`git: commit "chore(release): ${next}", tag ${tag}, push to origin main with tags`);
-  console.log(`npm: publish ${pkg.name}@${next}`);
-  console.log(
-    `github: release ${tag} with the changelog section as notes${hasGh ? "" : " (gh not available, would print the command)"}`
-  );
+  console.log(`then the Release workflow publishes ${pkg.name}@${next} to npm and lists the GitHub release`);
   process.exit(0);
 }
 
@@ -214,21 +199,5 @@ run(["git", "tag", "-a", tag, "-m", `${pkg.name} ${next}`]);
 step("push");
 run(["git", "push", "--follow-tags", "origin", "main"]);
 
-step("publish");
-run(["npm", "publish", ...(otp ? [`--otp=${otp}`] : [])]);
-
-step("github release");
-
-const notesPath = join(tmpdir(), `${pkg.name}-${next}-notes.md`);
-
-writeFileSync(notesPath, `${notes}\n`);
-
-if (hasGh) {
-  run(["gh", "release", "create", tag, "--title", tag, "--notes-file", notesPath]);
-} else {
-  console.log(
-    `gh is not available; create the release by hand:\n  gh release create ${tag} --title ${tag} --notes-file ${notesPath}`
-  );
-}
-
-step(`released ${pkg.name}@${next}`);
+step(`tagged ${tag}; the Release workflow publishes ${pkg.name}@${next}`);
+console.log(`watch it: gh run watch\nor: ${repo}/actions/workflows/release.yml`);

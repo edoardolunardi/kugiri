@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Releases publish from GitHub Actions. `npm run release` now ends by pushing
+  the tag, and the Release workflow publishes to npm through trusted publishing,
+  with provenance, and lists the GitHub release; no npm login or one-time
+  password is needed on the machine that cuts the release.
+
 ## [0.2.0] - 2026-09-03
 
 ### Added

@@ -1,0 +1,70 @@
+# Publishes a tagged version to npm and lists it as a GitHub release. The tag is pushed by
+# `npm run release`, which has already run the checks and the suite on the same commit; here the
+# checks run again and the build is what npm ships. npm authenticates through trusted publishing
+# (OIDC), so no token and no one-time password are involved, and the package gets provenance.
+#
+# One-time setup on npmjs.com: package kugiri -> Settings -> Trusted publisher -> GitHub Actions,
+# owner edoardolunardi, repository kugiri, workflow release.yml, no environment.
+#
+# Run it by hand for a tag that is already pushed: gh workflow run release.yml -f tag=v0.2.0
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag to publish, for example v0.2.0"
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - run: npm ci
+
+      - name: The tag names the version in package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$TAG" ]; then
+            echo "package.json is $version but the tag is $TAG" >&2
+            exit 1
+          fi
+
+      - run: npm run check
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+
+      - name: List it as a GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG exists"
+          else
+            node scripts/notes.mjs "${TAG#v}" > notes.md
+            gh release create "$TAG" --title "$TAG" --notes-file notes.md
+          fi

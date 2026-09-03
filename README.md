@@ -183,13 +183,14 @@ npm run format       # Biome, with fixes
 npm test             # Playwright against the demo
 npm run build        # dist/, from tsc
 npm run build.demo   # dist-demo/, the static demo published to GitHub Pages
-npm run release -- patch|minor|major   # changelog, size, version, tag, push, npm, GitHub release
+npm run release -- patch|minor|major   # changelog, size, version, tag, push; CI publishes
 ```
 
 Commits follow Conventional Commits and are checked by a hook. A release is one command: it rolls
-the changelog's Unreleased section into a dated version, restates the size above, bumps and tags,
-pushes, publishes to npm and opens a GitHub release. Try it with `--dry-run` first. Instructions
-for agents live in `AGENTS.md` and `.agents/skills/`.
+the changelog's Unreleased section into a dated version, restates the size above, bumps, tags and
+pushes; the tag then runs a workflow that publishes to npm through trusted publishing and lists
+the GitHub release. Try it with `--dry-run` first. Instructions for agents live in `AGENTS.md`
+and `.agents/skills/`.
 
 ## License
 

@@ -14,7 +14,8 @@ suite. This file is the one place agents read instructions from; the skills unde
 | `demo/demo.ts`         | The harness: splits each case as it scrolls into view and checks it against the paint.     |
 | `demo/demo.css`        | The demo's styles, including the classes cases rely on (`measure`, `narrow`, `drop-cap`).  |
 | `tests/demo.spec.ts`   | Playwright: opens the demo, reveals everything, asserts every case's check reads ok.       |
-| `scripts/release.mjs`  | The release, in one command.                                                               |
+| `scripts/release.mjs`  | The release, in one command, up to the tag push. `size.mjs` and `notes.mjs` serve it.      |
+| `.github/workflows/`   | `pages.yml` publishes the demo on every push to main; `release.yml` publishes a tag to npm. |
 | `.agents/skills/`      | Procedures: adding a case, probing a split in a browser, changing the library, releasing.  |
 
 ## Commands
@@ -79,6 +80,8 @@ npm run release -- patch|minor|major   # see .agents/skills/release
 
 ## Releasing
 
-`npm run release -- patch|minor|major` does everything: checks, tests, build, changelog rollover,
-size restatement, version bump, commit, tag, push, npm publish, GitHub release. Try
-`--dry-run` first. Details and recovery steps in `.agents/skills/release`.
+`npm run release -- patch|minor|major` runs the checks and the suite, rolls the changelog,
+restates the size, bumps, commits, tags and pushes. The tag starts the Release workflow, which
+publishes to npm through trusted publishing and lists the GitHub release; no npm login or
+one-time password is involved. Try `--dry-run` first. Details and recovery steps in
+`.agents/skills/release`.
