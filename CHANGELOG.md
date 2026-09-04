@@ -11,6 +11,9 @@ All notable changes to this project are documented here. The format follows
 - The demo outlines every line, word, character and mask on request, from a
   **Boxes** control in the panel, so what the split produced is visible on the
   page.
+- The demo's header shows the CSS-only reveal next to the scripted one: the
+  stylesheet that staggers off the index the split writes, and the two lines of
+  script it needs.
 
 ### Changed
 

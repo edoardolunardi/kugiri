@@ -63,7 +63,11 @@ for (const mask of split.masks) {
 split.revert();
 ```
 
-Or let a stylesheet do it. The split writes the index of every unit as a custom property:
+### With CSS only
+
+The split writes the index of every unit as a custom property, so a stylesheet can run the whole
+reveal and the script only has to split and set one attribute. Read `--line` or `--char` the same way
+to stagger lines or characters.
 
 ```ts
 splitText(target, { type: ["words"] });
@@ -217,7 +221,8 @@ scrolls into view. **Check lines** compares every split with the lines the brows
 the split, text and geometry. **Boxes** outlines every line, word, character and mask the split
 made, so you can see what it produced. The page reveals with the Web Animations API and reverts and
 splits every case again when its column changes width, with no reveal a second time, the way a
-consumer has to; its header shows the code for both, as examples that are not part of the library.
+consumer has to; its header shows the code for both, and for the same reveal in CSS only, as examples
+that are not part of the library.
 `npm test` runs the same check headless in Chromium, WebKit and Firefox.
 
 ## Development

@@ -26,14 +26,13 @@
         </ul>
         <p>
           kugiri is a split engine and nothing more. It writes the units and stops: no animation, no watching the
-          viewport, the fonts or the text. Both belong to the code that calls it, in whatever library it likes. The two
+          viewport, the fonts or the text. Both belong to the code that calls it, in whatever library it likes. The
           snippets below are not part of the library and do not ship with it. They are this page's own code, shown as
-          one way to do each, in plain browser APIs.
+          one way to do each, in plain browser APIs and in plain CSS.
         </p>
         <p>
           <strong>The reveal, an example.</strong> Each unit rises out of its mask with the Web Animations API,
-          staggered by its index. The <a href="#css-reveal">CSS-only reveal</a> case does the same from a stylesheet,
-          off the index the split writes as a custom property; GSAP or Motion would take the same elements.
+          staggered by its index. GSAP or Motion would take the same elements.
         </p>
         <pre><code>// Not part of kugiri: this page's own reveal, one way to animate the units.
 const split = splitText(target, { type: ["words"], mask: "words" });
@@ -59,6 +58,32 @@ await Promise.all(reveal.map((animation) => animation.finished));
 for (const mask of split.masks) {
   mask.style.clipPath = "none";
 }</code></pre>
+        <p>
+          <strong>The same reveal in CSS only.</strong> The split writes every unit's index as a custom property, so
+          a stylesheet can stagger off it and no script has to animate anything. The
+          <a href="#css-reveal">CSS-only reveal</a> case runs this way: the page splits it into words, sets one
+          attribute, and the stylesheet does the rest.
+        </p>
+        <pre><code>/* Not part of kugiri: this page's own CSS-only reveal, one way to animate the units. */
+.css-reveal [data-word] {
+  opacity: 0;
+  transform: translateY(0.6em);
+}
+
+.css-reveal[data-revealed] [data-word] {
+  animation: rise 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation-delay: calc(var(--word) * 30ms);
+}
+
+@keyframes rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}</code></pre>
+        <pre><code>// The only script the CSS-only reveal needs.
+splitText(target, { type: ["words"] });
+target.dataset.revealed = "";</code></pre>
         <p>
           <strong>The next layout, an example.</strong> A split is a snapshot of the layout the text had when it ran,
           and nothing splits again on its own. This page watches the width of the column the cases sit in and, when it
