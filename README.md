@@ -26,8 +26,8 @@ script. It never decides where a line should break; the browser did that already
   watches the viewport or splits again on its own, and [that part is yours](#a-split-is-a-snapshot).
 - **Cheap.** One read phase, one write phase, no forced reflow. A 2,000-word article splits into
   lines in about 10ms on a laptop.
-- **Small.** One file, ES2022, no dependencies. About 6.8 kB minified and gzipped (18.5 kB
-  minified, 6.1 kB with brotli).
+- **Small.** One file, ES2022, no dependencies. About 6.9 kB minified and gzipped (18.9 kB
+  minified, 6.3 kB with brotli).
 
 ## Install
 

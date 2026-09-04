@@ -1,6 +1,6 @@
 {
   "name": "kugiri",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Splits text into lines, words and characters exactly where the browser already broke it.",
   "keywords": [
     "text",
