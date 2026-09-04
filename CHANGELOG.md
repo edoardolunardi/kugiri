@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-04
+
 ### Fixed
 
 - Lines set tighter than their glyph boxes (a display heading at `line-height: 0.85`,
