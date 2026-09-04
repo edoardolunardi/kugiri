@@ -99,7 +99,9 @@ function paintedLines(target: HTMLElement, relativeTo: HTMLElement = target, ign
   const origin = relativeTo.getBoundingClientRect();
   const alongEnd = (rect: DOMRect) => (vertical ? rect.bottom : rtl ? -rect.left : rect.right);
 
-  // Rects that overlap across the line share a row; rows come back in reading order.
+  // A rect joins the row its centre falls in (a line set tighter than its glyph boxes overlaps the
+  // next by a few pixels, yet is another row); rows come back in reading order.
+  const centre = (rect: DOMRect) => (across(rect) + acrossEnd(rect)) / 2;
   const rowsOf = (rects: DOMRectList) => {
     const rows: DOMRect[] = [];
 
@@ -109,7 +111,7 @@ function paintedLines(target: HTMLElement, relativeTo: HTMLElement = target, ign
       }
 
       const shared = rows.some(
-        (row) => across(rect) < acrossEnd(row) - SAME_LINE_TOLERANCE && acrossEnd(rect) > across(row) + SAME_LINE_TOLERANCE
+        (row) => centre(rect) > across(row) + SAME_LINE_TOLERANCE && centre(rect) < acrossEnd(row) - SAME_LINE_TOLERANCE
       );
 
       if (!shared) {
@@ -192,8 +194,8 @@ function paintedLines(target: HTMLElement, relativeTo: HTMLElement = target, ign
 
         if (previous) {
           const rect = rows[0];
-          const later = across(rect) >= acrossEnd(previous) - SAME_LINE_TOLERANCE;
-          const earlier = acrossEnd(rect) <= across(previous) + SAME_LINE_TOLERANCE;
+          const later = centre(rect) >= acrossEnd(previous) - SAME_LINE_TOLERANCE;
+          const earlier = centre(rect) <= across(previous) + SAME_LINE_TOLERANCE;
           const back = across(rect) > across(previous) + SAME_LINE_TOLERANCE && along(rect) < along(previous) - 1;
 
           if (later || earlier || back) {
@@ -236,8 +238,8 @@ function paintedLines(target: HTMLElement, relativeTo: HTMLElement = target, ign
     const rect = rects[0];
 
     if (previous) {
-      const later = across(rect) >= acrossEnd(previous) - SAME_LINE_TOLERANCE;
-      const earlier = acrossEnd(rect) <= across(previous) + SAME_LINE_TOLERANCE;
+      const later = centre(rect) >= acrossEnd(previous) - SAME_LINE_TOLERANCE;
+      const earlier = centre(rect) <= across(previous) + SAME_LINE_TOLERANCE;
       const back = across(rect) > across(previous) + SAME_LINE_TOLERANCE && along(rect) < along(previous) - 1;
 
       if (later || earlier || back) {

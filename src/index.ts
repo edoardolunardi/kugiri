@@ -140,6 +140,13 @@ type Context = {
 /** Rects closer than this on the block axis sit on the same line; a raised superscript is well within it. */
 const SAME_LINE_TOLERANCE = 2;
 
+/** The middle of an extent across the line. */
+const centre = (band: { start: number; end: number }) => (band.start + band.end) / 2;
+
+/** True when a rect's extent across the line is centred inside a row's. */
+const inRow = (band: { start: number; end: number }, row: { start: number; end: number }) =>
+  centre(band) > row.start + SAME_LINE_TOLERANCE && centre(band) < row.end - SAME_LINE_TOLERANCE;
+
 /** Containers whose inline content lays out as lines of their own; everything else with text is one piece. */
 const BLOCK_DISPLAYS = new Set(["block", "list-item", "flow-root", "table-cell", "table-caption"]);
 
@@ -443,9 +450,11 @@ function planRun(container: Element, from: number, to: number, context: Context)
   // measured without that glyph, which the write phase lifts out as a float of its own.
   let dropCap = from === 0 && getComputedStyle(container, "::first-letter").getPropertyValue("float") !== "none";
 
-  // A new line starts where a piece lands on a later line, lands entirely before the previous one
-  // (the next column), or sits lower on the same line while back at the line start (after a
-  // superscript). A raised or lowered inline box still overlaps its neighbours, so it is neither.
+  // A new line starts where a piece's centre lands past the previous one's box (a later line),
+  // entirely before it (the next column), or lower on the same line while back at the line start
+  // (after a superscript). The centre, not the edges: a raised or lowered inline box still has its
+  // centre inside its neighbours, while a line set tighter than its glyph boxes overlaps the next
+  // by a few pixels and is still another line.
   const consider = (rect: DOMRect, boundary: Boundary) => {
     if (rect.width === 0 && rect.height === 0) {
       return;
@@ -454,8 +463,8 @@ function planRun(container: Element, from: number, to: number, context: Context)
     if (previous) {
       const line = across(rect);
       const last = across(previous);
-      const later = line.start >= last.end - SAME_LINE_TOLERANCE;
-      const earlier = line.end <= last.start + SAME_LINE_TOLERANCE;
+      const later = centre(line) >= last.end - SAME_LINE_TOLERANCE;
+      const earlier = centre(line) <= last.start + SAME_LINE_TOLERANCE;
       const back = line.start > last.start + SAME_LINE_TOLERANCE && along(rect).start < along(previous).start - 1;
 
       if (later || earlier || back) {
@@ -470,8 +479,9 @@ function planRun(container: Element, from: number, to: number, context: Context)
   };
 
   // The rows a set of rects sits on, in reading order, each with how far its rects reach along the
-  // line. Rects that overlap across the line share a row: a first-letter box or a superscript is
-  // taller or raised but still on its line, while two lines never overlap.
+  // line. A rect joins the row its centre falls in: a first-letter box or a superscript is taller or
+  // raised but centred on its line, while a line set tighter than its glyph boxes overlaps the next
+  // by a few pixels without its centre ever leaving its own row.
   const rowsOf = (rects: DOMRectList) => {
     const rows: Row[] = [];
 
@@ -482,11 +492,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
 
       const span = along(rect);
       const band = across(rect);
-      const row = rows.find((entry) => {
-        const own = across(entry.rect);
-
-        return band.start < own.end - SAME_LINE_TOLERANCE && band.end > own.start + SAME_LINE_TOLERANCE;
-      });
+      const row = rows.find((entry) => inRow(band, across(entry.rect)));
 
       if (row) {
         row.start = Math.min(row.start, span.start);
@@ -804,9 +810,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
 
         const rect = entry === word ? rest : entry.rect;
         const band = across(rect);
-        const row = rows.find(
-          (candidate) => band.start < candidate.end - SAME_LINE_TOLERANCE && band.end > candidate.start + SAME_LINE_TOLERANCE
-        );
+        const row = rows.find((candidate) => inRow(band, candidate));
 
         if (row) {
           row.start = Math.min(row.start, band.start);

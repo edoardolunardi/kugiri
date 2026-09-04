@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Lines set tighter than their glyph boxes (a display heading at `line-height: 0.85`,
+  or any leading below the font's content area) no longer merge into one line. A rect
+  joins the row its centre falls in, where it used to join any row it overlapped, and
+  consecutive rows of tight type overlap by a few pixels.
+
 ### Added
 
 - The demo outlines every line, word, character and mask on request, from a
