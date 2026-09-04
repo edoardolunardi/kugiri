@@ -2,13 +2,20 @@
 // Animations API (or leaves the reveal to the stylesheet), and can check every split against the
 // lines the browser painted before the split ran. Nothing here is part of the library.
 
-import { type SplitLevel, splitText, type TextSplit } from "../src/index";
+import { type MaskReach, type SplitLevel, splitText, type TextSplit } from "../src/index";
+
+/** The `mask` option a case asks for: its levels, each with the case's reach when it names one. */
+function maskOption(reveal: { mask: SplitLevel[]; reach: string | undefined }): SplitLevel[] | MaskReach {
+  return reveal.reach ? Object.fromEntries(reveal.mask.map((level) => [level, reveal.reach])) : reveal.mask;
+}
 
 type Reveal = {
   target: HTMLElement;
   section: HTMLElement;
   unit: SplitLevel;
   mask: SplitLevel[];
+  /** How far each mask's clip reaches past the box, for the descenders a tight leading leaves outside it. */
+  reach: string | undefined;
   ignore: string | undefined;
   css: boolean;
   split: TextSplit | null;
@@ -412,6 +419,10 @@ function describe(reveal: Reveal): string[] {
     tags.push(`mask ${reveal.mask.join(" ")}`);
   }
 
+  if (reveal.reach) {
+    tags.push(`reach ${reveal.reach}`);
+  }
+
   if (reveal.ignore) {
     tags.push(`ignore ${reveal.ignore}`);
   }
@@ -447,17 +458,20 @@ class Demo {
       }
 
       const mask = section.dataset.mask;
+      const levels =
+        mask === "none"
+          ? []
+          : mask
+            ? mask.split(" ").filter(isLevel)
+            : [isLevel(section.dataset.unit) ? section.dataset.unit : "lines"];
+      const reach = section.dataset.maskReach;
 
       this.reveals.push({
         target,
         section,
         unit: isLevel(section.dataset.unit) ? section.dataset.unit : "lines",
-        mask:
-          mask === "none"
-            ? []
-            : mask
-              ? mask.split(" ").filter(isLevel)
-              : [isLevel(section.dataset.unit) ? section.dataset.unit : "lines"],
+        mask: levels,
+        reach,
         ignore: section.dataset.ignore,
         css: section.dataset.reveal === "css",
         split: null,
@@ -582,7 +596,7 @@ class Demo {
   play(reveal: Reveal) {
     const start = performance.now();
 
-    reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: reveal.mask, ignore: reveal.ignore });
+    reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: maskOption(reveal), ignore: reveal.ignore });
     this.splitTimes.push(performance.now() - start);
     this.render();
 
@@ -721,7 +735,7 @@ class Demo {
 
       const start = performance.now();
 
-      reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: reveal.mask, ignore: reveal.ignore });
+      reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: maskOption(reveal), ignore: reveal.ignore });
       this.splitTimes.push(performance.now() - start);
       reveal.target.setAttribute("data-revealed", "settled");
 

@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `mask` takes an object naming, per level, how far the clip reaches past the box across
+  the line: `mask: { lines: ".25em" }`. Display type set tighter than its glyph boxes
+  leaves descenders and accents outside the line box, and a clip at the box cuts them
+  until it is dropped; a reach keeps them in the window with no change to layout, since it
+  is a negative inset on the clip itself. Read the clip back off the mask's inline style
+  to restore it after clearing it.
+
 ## [0.2.1] - 2026-09-04
 
 ### Fixed

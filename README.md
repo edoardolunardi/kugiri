@@ -141,7 +141,7 @@ Splits `target` in place and returns a `TextSplit`.
 | Option    | Type                                      | Default     | What it does                                                                                                             |
 | --------- | ----------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `type`    | `("lines" \| "words" \| "chars")[]`       | `["lines"]` | The units to produce. Words and chars always sit inside lines, so `lines` comes with them.                              |
-| `mask`    | `SplitLevel \| SplitLevel[]`              | none        | The units that get a clipping wrapper (`clip-path: inset(0)`, set inline) to slide out from under. Any levels, whatever the unit you animate. The clip stays until you clear it. |
+| `mask`    | `SplitLevel \| SplitLevel[] \| MaskReach` | none        | The units that get a clipping wrapper (`clip-path: inset(0)`, set inline) to slide out from under. Any levels, whatever the unit you animate. As an object, each level names how far its clip reaches past the box across the line (`{ lines: ".25em" }`), for the descenders and accents a tight leading leaves outside the line box. The clip stays until you clear it. |
 | `ignore`  | `string`                                  | none        | A selector for elements to leave whole: never cut into, never wrapped, never a unit.                                    |
 | `classes` | `{ lines?, words?, chars?, mask? }`       | none        | Class names to add to the units and masks, on top of the data attributes they always carry.                             |
 

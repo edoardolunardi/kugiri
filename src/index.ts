@@ -19,11 +19,19 @@
 
 export type SplitLevel = "lines" | "words" | "chars";
 
+/** Per level, how far a mask's clip reaches past the box across the line: a CSS length, such as `".25em"`. */
+export type MaskReach = Partial<Record<SplitLevel, string>>;
+
 export type SplitOptions = {
   /** The units to produce. Words and chars always sit inside lines, so `lines` comes with them. */
   type?: SplitLevel[];
-  /** The units that get a clipping wrapper (`clip-path: inset(0)`) to slide out from under: any of the levels, or none. */
-  mask?: SplitLevel | SplitLevel[];
+  /**
+   * The units that get a clipping wrapper (`clip-path: inset(0)`) to slide out from under: any of
+   * the levels, or none. As an object, each level names how far its clip reaches past the box
+   * across the line (`{ lines: ".25em" }`): a leading set tighter than the glyphs leaves descenders
+   * and accents outside the line box, and the reach keeps them in the window while the clip is on.
+   */
+  mask?: SplitLevel | SplitLevel[] | MaskReach;
   /** A selector for elements to leave whole: never cut into, never wrapped, never a unit. */
   ignore?: string;
   /** Class names to add to the units and masks, on top of the data attributes they always carry. */
@@ -117,7 +125,10 @@ type Context = {
   target: HTMLElement;
   wrapWords: boolean;
   wrapChars: boolean;
-  mask: Set<SplitLevel>;
+  /** The levels that get a mask, each with the reach of its clip past the box, or "" for none. */
+  mask: Map<SplitLevel, string>;
+  /** Vertical writing: the reach across the line is then horizontal. */
+  vertical: boolean;
   ignore: string | undefined;
   kinds: Map<Element, Kind>;
   displays: Map<Element, string>;
@@ -1028,6 +1039,19 @@ function wrapper(tag: "div" | "span", context: Context, css: string) {
   return el;
 }
 
+/** The levels the `mask` option names, each with the reach it asks for. */
+function maskLevels(mask: SplitOptions["mask"]): Map<SplitLevel, string> {
+  if (mask === undefined) {
+    return new Map();
+  }
+
+  if (typeof mask === "string" || Array.isArray(mask)) {
+    return new Map([mask].flat().map((level) => [level, ""]));
+  }
+
+  return new Map(Object.entries(mask).filter((entry): entry is [SplitLevel, string] => Boolean(entry[1])));
+}
+
 const sized = (size: number | undefined) => (size ? `;inline-size:${size}px` : "");
 
 /** The hyphen a break drew, restated as a glyph in a box of the same width. */
@@ -1106,6 +1130,19 @@ function restateHyphen(pending: PendingHyphen, lines: HTMLElement[], along: (rec
   }
 }
 
+/** The clip a mask of `level` is written with: `inset(0)`, or a reach past the box across the line. */
+function maskClip(level: SplitLevel, context: Context): string {
+  const reach = context.mask.get(level);
+
+  if (!reach) {
+    return "clip-path:inset(0)";
+  }
+
+  const past = `calc(${reach} * -1)`;
+
+  return context.vertical ? `clip-path:inset(0 ${past})` : `clip-path:inset(${past} 0)`;
+}
+
 function maskOf(unit: HTMLElement, tag: "div" | "span", css: string, sink: Sink, context: Context) {
   const mask = wrapper(tag, context, css);
 
@@ -1134,7 +1171,7 @@ function wrapWordChars(word: HTMLElement, decoration: string, sizes: number[] | 
     sink.chars.push(unit);
 
     if (context.mask.has("chars")) {
-      maskOf(unit, "span", `display:inline-block;position:relative;clip-path:inset(0)${decoration}`, sink, context);
+      maskOf(unit, "span", `display:inline-block;position:relative;${maskClip("chars", context)}${decoration}`, sink, context);
     }
   }
 }
@@ -1187,7 +1224,7 @@ function wrapTextWords(
     }
 
     const outer = context.mask.has("words")
-      ? maskOf(unit, "span", `display:inline-block;position:relative;clip-path:inset(0)${decoration}`, sink, context)
+      ? maskOf(unit, "span", `display:inline-block;position:relative;${maskClip("words", context)}${decoration}`, sink, context)
       : unit;
     const boundary = starts.get(start);
 
@@ -1381,7 +1418,7 @@ function cutRun(run: RunPlan, context: Context) {
     sink.lines.push(line);
 
     if (context.mask.has("lines")) {
-      maskOf(line, "div", "display:block;position:relative;clip-path:inset(0)", sink, context);
+      maskOf(line, "div", `display:block;position:relative;${maskClip("lines", context)}`, sink, context);
     }
   });
 
@@ -1663,7 +1700,8 @@ export function splitText(target: HTMLElement, options: SplitOptions = {}): Text
     target,
     wrapWords: levels.has("words") || levels.has("chars"),
     wrapChars: levels.has("chars"),
-    mask: new Set(options.mask === undefined ? [] : [options.mask].flat()),
+    mask: maskLevels(options.mask),
+    vertical: /^(vertical|sideways)/.test(getComputedStyle(target).writingMode),
     ignore: options.ignore,
     kinds: new Map(),
     displays: new Map(),
