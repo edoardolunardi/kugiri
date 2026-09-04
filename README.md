@@ -22,7 +22,8 @@ script. It never decides where a line should break; the browser did that already
   onto word and character units and still follow the link's hover.
 - **Owns nothing but the split.** Every unit gets `data-line`, `data-word` or `data-char` with its
   index, the same index as a custom property, and a mask wrapper if you want one. Animate with the
-  Web Animations API, GSAP, Motion, or a stylesheet.
+  Web Animations API, GSAP, Motion, or a stylesheet. A split is a snapshot of one layout: nothing
+  watches the viewport or splits again on its own, and [that part is yours](#a-split-is-a-snapshot).
 - **Cheap.** One read phase, one write phase, no forced reflow. A 2,000-word article splits into
   lines in about 10ms on a laptop.
 - **Small.** One file, ES2022, no dependencies. About 6.8 kB minified and gzipped (18.5 kB
@@ -81,8 +82,43 @@ target.dataset.revealed = "";
 }
 ```
 
-Split after the fonts the text is set in have loaded (`await document.fonts.ready`), and split
-again after a resize once the reveal is over: the lines were measured for the box the text had.
+### A split is a snapshot
+
+kugiri is a split engine and nothing more. A split is the layout the text had at the moment it ran.
+It does not watch the viewport, the fonts, the text or the container, and it never splits again on
+its own. When the box the text wraps in changes width, the lines it was cut into are no longer the
+lines the browser would paint, and it is your code that reverts and splits again.
+
+None of this ships with the library. The example below is one way to do it, not an API: it watches
+the target's inline size, folds the stream of changes a drag produces into one split per frame, and
+ignores height changes, which move no wrap (a phone's address bar collapsing on scroll is one):
+
+```ts
+import { splitText } from "kugiri";
+
+const target = document.querySelector("h1");
+let split = splitText(target, { type: ["lines"] });
+let width = target.clientWidth;
+let frame = 0;
+
+new ResizeObserver(() => {
+  if (target.clientWidth === width) {
+    return;
+  }
+
+  width = target.clientWidth;
+  cancelAnimationFrame(frame);
+  frame = requestAnimationFrame(() => {
+    split.revert();
+    split = splitText(target, { type: ["lines"] });
+  });
+}).observe(target);
+```
+
+The same holds for anything else that moves a wrap. Split after the fonts the text is set in have
+loaded (`await document.fonts.ready`), and split again after the text or its styles change. Whether
+to replay the reveal after a resize or to show the units at rest is a choice the split leaves to
+you; the demo splits again with no reveal, so the text stays responsive and nothing plays twice.
 
 ## API
 
@@ -168,10 +204,13 @@ Content is classified by how it lays out, not by tag:
 
 The demo is live at <https://edoardolunardi.github.io/kugiri/>.
 
-`npm run dev` opens the demo, which is also the test suite: about fifty cases, each split as it
+`npm run dev` opens the demo, which is also the test suite: over fifty cases, each split as it
 scrolls into view. **Check lines** compares every split with the lines the browser painted before
-the split, text and geometry. `npm test` runs the same check headless in Chromium, WebKit and
-Firefox.
+the split, text and geometry. **Boxes** outlines every line, word, character and mask the split
+made, so you can see what it produced. The page reveals with the Web Animations API and reverts and
+splits every case again when its column changes width, with no reveal a second time, the way a
+consumer has to; its header shows the code for both, as examples that are not part of the library.
+`npm test` runs the same check headless in Chromium, WebKit and Firefox.
 
 ## Development
 
