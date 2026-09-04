@@ -38,10 +38,6 @@
         <pre><code>// Not part of kugiri: this page's own reveal, one way to animate the units.
 const split = splitText(target, { type: ["words"], mask: "words" });
 
-for (const mask of split.masks) {
-  mask.style.clipPath = "inset(0)";
-}
-
 const reveal = split.words.map((word, index) =>
   word.animate(
     [
@@ -57,7 +53,7 @@ const reveal = split.words.map((word, index) =>
   )
 );
 
-// At rest a mask would clip descenders, so it goes once the reveal is over.
+// A mask clips at rest too (descenders, focus rings), so the clip goes once the reveal is over.
 await Promise.all(reveal.map((animation) => animation.finished));
 
 for (const mask of split.masks) {

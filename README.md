@@ -43,14 +43,21 @@ import { splitText } from "kugiri";
 const target = document.querySelector("h1");
 const split = splitText(target, { type: ["lines"], mask: "lines" });
 
-split.lines.forEach((line, index) => {
+const reveal = split.lines.map((line, index) =>
   line.animate([{ transform: "translateY(100%)", opacity: 0 }, { transform: "none", opacity: 1 }], {
     duration: 1000,
     delay: index * 100,
     easing: "cubic-bezier(0.23, 1, 0.32, 1)",
-    fill: "both",
-  });
-});
+    fill: "backwards", // hidden until its turn, at rest when done
+  })
+);
+
+// A mask clips at rest too (descenders, focus rings), so drop the clip once the reveal is over.
+await Promise.all(reveal.map((animation) => animation.finished));
+
+for (const mask of split.masks) {
+  mask.style.clipPath = "none";
+}
 
 // Later, to put the original markup back:
 split.revert();
@@ -91,7 +98,8 @@ lines the browser would paint, and it is your code that reverts and splits again
 
 None of this ships with the library. The example below is one way to do it, not an API: it watches
 the target's inline size, folds the stream of changes a drag produces into one split per frame, and
-ignores height changes, which move no wrap (a phone's address bar collapsing on scroll is one):
+ignores height changes, which move no wrap (a phone's address bar collapsing on scroll is one). The
+demo does the same for its fifty cases with a short timeout in place of the frame:
 
 ```ts
 import { splitText } from "kugiri";
@@ -129,7 +137,7 @@ Splits `target` in place and returns a `TextSplit`.
 | Option    | Type                                      | Default     | What it does                                                                                                             |
 | --------- | ----------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `type`    | `("lines" \| "words" \| "chars")[]`       | `["lines"]` | The units to produce. Words and chars always sit inside lines, so `lines` comes with them.                              |
-| `mask`    | `SplitLevel \| SplitLevel[]`              | none        | The units that get a clipping wrapper (`clip-path: inset(0)`) to slide out from under. Any levels, whatever the unit you animate. |
+| `mask`    | `SplitLevel \| SplitLevel[]`              | none        | The units that get a clipping wrapper (`clip-path: inset(0)`, set inline) to slide out from under. Any levels, whatever the unit you animate. The clip stays until you clear it. |
 | `ignore`  | `string`                                  | none        | A selector for elements to leave whole: never cut into, never wrapped, never a unit.                                    |
 | `classes` | `{ lines?, words?, chars?, mask? }`       | none        | Class names to add to the units and masks, on top of the data attributes they always carry.                             |
 
@@ -204,7 +212,7 @@ Content is classified by how it lays out, not by tag:
 
 The demo is live at <https://edoardolunardi.github.io/kugiri/>.
 
-`npm run dev` opens the demo, which is also the test suite: over fifty cases, each split as it
+`npm run dev` opens the demo, which is also the test suite: fifty cases, each split as it
 scrolls into view. **Check lines** compares every split with the lines the browser painted before
 the split, text and geometry. **Boxes** outlines every line, word, character and mask the split
 made, so you can see what it produced. The page reveals with the Web Animations API and reverts and

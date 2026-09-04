@@ -592,10 +592,6 @@ class Demo {
     const units = reveal.split[reveal.unit];
     const masks = reveal.split.masks;
 
-    for (const mask of masks) {
-      mask.style.clipPath = "inset(0)";
-    }
-
     const animations = units.map((unit, index) =>
       unit.animate(
         [
@@ -614,7 +610,8 @@ class Demo {
 
     reveal.target.setAttribute("data-revealed", "");
 
-    // The masks only exist to hide a unit on its way up; at rest they would clip descenders and focus rings.
+    // The split clips every mask; the clip only exists to hide a unit on its way up, and at rest it would
+    // clip descenders and focus rings, so it goes once the reveal is over.
     void Promise.all(animations.map((animation) => animation.finished)).then(() => {
       for (const mask of masks) {
         mask.style.clipPath = "none";
@@ -725,6 +722,11 @@ class Demo {
       reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: reveal.mask, ignore: reveal.ignore });
       this.splitTimes.push(performance.now() - start);
       reveal.target.setAttribute("data-revealed", "settled");
+
+      // Nothing is on its way up, so the clip the split put on every mask goes at once.
+      for (const mask of reveal.split.masks) {
+        mask.style.clipPath = "none";
+      }
     }
 
     this.render();
