@@ -1,5 +1,30 @@
 /* The demo's own styles. Nothing here is required by the splitter; the cases only need something to wrap in. */
 
+/* Geist and Geist Mono, the one family the page is set in, self-hosted as variable faces (SIL OFL, see fonts/LICENSE.txt). */
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/Geist-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/Geist-VariableItalic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/GeistMono-Variable.woff2") format("woff2");
+}
+
 *,
 *::before,
 *::after {
@@ -8,34 +33,86 @@
 
 :root {
   --ink: #16181f;
+  --ink-soft: #3b3e49;
   --muted: #6b6f7b;
   --rule: #e2e3ea;
+  --fill: #ebecf4;
+  --fill-accent: #e6e2f7;
   --accent: #5b3fd6;
   --paper: #fafafc;
   --plate: #ffffff;
+
+  /* A check reads ok or mismatch, and the dot beside the result says which before the text does. */
+  --ok: #1a7f4b;
+  --fail: #b42318;
+
+  /* One hue per level of boxes, none of them the accent, which marks what can be clicked. */
+  --box-line: #2563eb;
+  --box-word: #0e7490;
+  --box-char: #b45309;
+  --box-mask: #be185d;
+
+  /* A ring in place of a border, so a control lifts off the paper without a hard edge. */
+  --shadow-border: 0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06), 0 2px 4px 0 rgb(0 0 0 / 0.04);
+  --shadow-border-hover: 0 0 0 1px rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08), 0 2px 4px 0 rgb(0 0 0 / 0.06);
+
+  --sans: "Geist", sans-serif;
+  --mono: "Geist Mono", monospace;
 }
 
+/* The root's line-height is what the cases inherit, so it stays as it was; the chrome sets its own. */
 html {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--sans);
   color: var(--ink);
   background: var(--paper);
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   margin: 0;
-  padding: 0 32px 160px;
+  padding: 0 clamp(16px, 4vw, 32px) 240px;
 }
 
 a {
   color: inherit;
 }
 
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Page */
+
+.skip {
+  position: absolute;
+  inset-inline-start: -999px;
+  top: 16px;
+  z-index: 2;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--plate);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.skip:focus {
+  inset-inline-start: 16px;
+}
+
+.page {
+  display: grid;
+}
+
 header {
   display: grid;
-  gap: 24px;
-  padding: 64px 0 40px;
+  gap: 16px;
+  max-width: 64ch;
+  padding: 56px 0 40px;
 }
 
 header h1 {
@@ -44,88 +121,278 @@ header h1 {
   font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1.05;
+  text-wrap: balance;
 }
 
 header p {
-  max-width: 60ch;
   margin: 0;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+header .lede {
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+header a {
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+}
+
+.how {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.5;
   color: var(--muted);
 }
+
+.how strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+header pre {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--plate);
+  box-shadow: var(--shadow-border);
+  font: 12px / 1.6 var(--mono);
+  color: var(--ink-soft);
+  overflow-x: auto;
+}
+
+main {
+  min-width: 0;
+}
+
+/* Table of contents: group links only on a narrow screen, every case in the sidebar on a wide one. */
 
 nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  font:
-    11px / 1.4 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  text-transform: uppercase;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-nav a {
-  color: var(--muted);
+.toc,
+.toc-cases {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.toc-group {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--plate);
+  box-shadow: var(--shadow-border);
+  font-weight: 500;
   text-decoration: none;
 }
 
-nav a:hover {
-  text-decoration: underline;
+.toc-cases {
+  display: none;
+}
+
+.side {
+  margin-bottom: 40px;
+}
+
+@media (min-width: 1100px) {
+  body {
+    padding-bottom: 120px;
+  }
+
+  .page {
+    grid-template-columns: 256px minmax(0, 1fr);
+    column-gap: 48px;
+  }
+
+  header {
+    grid-column: 1 / -1;
+  }
+
+  .side {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    align-self: start;
+    max-height: 100vh;
+    margin-bottom: 0;
+    padding-block: 24px;
+  }
+
+  /* The contents scroll on their own and dissolve at the foot, so the cut says there is more. */
+  nav {
+    flex: 1;
+    min-height: 0;
+    padding-inline-end: 8px;
+    padding-bottom: 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent);
+  }
+
+  .toc {
+    display: grid;
+    gap: 20px;
+  }
+
+  .toc-group {
+    display: block;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    font: 500 11px / 1.5 var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .toc-cases {
+    display: grid;
+    margin-top: 4px;
+  }
+
+  .toc-cases a {
+    display: block;
+    padding: 3px 0;
+    color: var(--muted);
+    text-decoration: none;
+  }
+}
+
+/* The ring belongs to the pills; in the sidebar a group heading darkens like the links under it. */
+@media (hover: hover) and (max-width: 1099px) {
+  .toc-group:hover {
+    box-shadow: var(--shadow-border-hover);
+  }
+}
+
+@media (hover: hover) and (min-width: 1100px) {
+  .toc-group:hover,
+  .toc-cases a:hover {
+    color: var(--ink);
+  }
+}
+
+/* Groups and cases */
+
+section[data-group] + section[data-group] {
+  margin-top: 56px;
+}
+
+.group-title {
+  margin: 0 0 16px;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  text-wrap: balance;
+  scroll-margin-top: 24px;
 }
 
 section[data-case] {
   display: grid;
   gap: 16px;
   padding: 40px 0;
-  border-top: 1px dashed var(--rule);
+  border-top: 1px solid var(--rule);
+  scroll-margin-top: 24px;
 }
 
 @media (min-width: 900px) {
   section[data-case] {
-    grid-template-columns: 1fr 3fr;
-    gap: 32px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 40px;
   }
 }
 
 .case-title {
   margin: 0;
-  font:
-    12px / 1.3 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  text-transform: uppercase;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.case-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 6px 0 0;
+  font: 12px / 1.5 var(--mono);
   color: var(--muted);
+}
+
+.case-meta a {
+  text-decoration: none;
 }
 
 .case-expect {
-  margin: 8px 0 0;
-  font-size: 13px;
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--muted);
+  text-wrap: pretty;
 }
 
 .case-result {
-  margin: 8px 0 0;
-  font:
-    11px / 1.4 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  text-transform: uppercase;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 12px 0 0;
+  font: 12px / 1.5 var(--mono);
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .case-result:empty {
   display: none;
 }
 
+.case-result::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+section[data-status="ok"] .case-result::before {
+  background: var(--ok);
+}
+
 section[data-status="mismatch"] .case-result {
-  color: var(--accent);
+  color: var(--fail);
+}
+
+section[data-status="mismatch"] .case-result::before {
+  background: var(--fail);
+}
+
+@media (hover: hover) {
+  .case-meta a:hover {
+    text-decoration: underline;
+  }
 }
 
 .sample {
   min-width: 0;
-  color: #3b3e49;
+  color: var(--ink-soft);
 }
 
 /* Every split target starts imperceptibly transparent, so the server-rendered text still paints. */
@@ -137,46 +404,164 @@ section[data-status="mismatch"] .case-result {
   opacity: 1;
 }
 
+/* Panel: a bar along the bottom of a narrow screen, the foot of the sidebar on a wide one. */
+
 .panel {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  inset-inline: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
   z-index: 1;
   display: grid;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--rule);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--plate) 90%, transparent);
-  backdrop-filter: blur(8px);
-  font:
-    11px / 1.5 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  text-transform: uppercase;
-  white-space: pre;
+  gap: 16px;
+  max-width: 480px;
+  margin-inline: auto;
+  padding: 12px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--plate) 92%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    var(--shadow-border),
+    0 8px 24px -8px rgb(0 0 0 / 0.16);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.panel div {
-  display: flex;
+@media (min-width: 1100px) {
+  .panel {
+    position: static;
+    max-width: none;
+    margin: 16px 0 0;
+    background: var(--plate);
+    backdrop-filter: none;
+    box-shadow: var(--shadow-border);
+  }
+
+  .boxes-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.actions,
+.boxes-list {
+  display: grid;
   gap: 8px;
 }
 
-.panel button {
-  padding: 4px 8px;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  background: var(--plate);
-  font: inherit;
-  text-transform: inherit;
-  cursor: pointer;
+.actions {
+  grid-template-columns: 1fr 1fr;
 }
 
-.panel button.primary {
-  border-color: var(--ink);
+.boxes {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.boxes legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.boxes-list {
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.panel button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--plate);
+  color: var(--ink);
+  box-shadow: var(--shadow-border);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition-property: background-color, box-shadow, color, scale;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.panel button:active {
+  scale: 0.96;
+}
+
+.panel .primary {
   background: var(--ink);
   color: var(--plate);
+  box-shadow: none;
+}
+
+.panel [data-box] {
+  font-size: 12px;
+}
+
+.panel [data-box]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--box);
+  border-radius: 3px;
+  transition: background-color 150ms ease-out;
+}
+
+.panel [data-box][aria-pressed="true"] {
+  background: color-mix(in srgb, var(--box) 10%, var(--plate));
+  box-shadow: 0 0 0 1px var(--box);
+}
+
+.panel [data-box][aria-pressed="true"]::before {
+  background: var(--box);
+}
+
+@media (hover: hover) {
+  .panel button:hover {
+    box-shadow: var(--shadow-border-hover);
+  }
+
+  .panel .primary:hover {
+    background: color-mix(in srgb, var(--ink) 88%, var(--plate));
+  }
+
+  .panel [data-box][aria-pressed="true"]:hover {
+    box-shadow: 0 0 0 1px var(--box);
+  }
+}
+
+.verdict {
+  margin: 0;
+}
+
+.verdict:empty {
+  display: none;
+}
+
+.readout {
+  margin: 0;
+  font: 11px / 1.6 var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: pre-line;
+  color: var(--muted);
+}
+
+@media (max-width: 1099px) {
+  .readout {
+    display: none;
+  }
 }
 
 /* Type */
@@ -210,11 +595,7 @@ section[data-status="mismatch"] .case-result {
 }
 
 .mono {
-  font:
-    12px / 1.3 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px / 1.3 var(--mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -351,11 +732,7 @@ sup {
   padding: 0 8px;
   border: 1px solid var(--rule);
   border-radius: 8px;
-  font:
-    11px / 1.8 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 11px / 1.8 var(--mono);
   text-transform: uppercase;
   vertical-align: middle;
 }
@@ -378,7 +755,7 @@ sup {
   height: 90px;
   margin: 6px 16px 4px 0;
   border-radius: 12px;
-  background: #e6e2f7;
+  background: var(--fill-accent);
 }
 
 .thumb.right {
@@ -414,7 +791,7 @@ sup {
   aspect-ratio: 16 / 9;
   max-width: 620px;
   border-radius: 16px;
-  background: #ebecf4;
+  background: var(--fill);
 }
 
 .buttons {
@@ -455,11 +832,7 @@ blockquote {
 blockquote cite {
   display: block;
   margin-top: 8px;
-  font:
-    11px / 1.4 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 11px / 1.4 var(--mono);
   text-transform: uppercase;
   font-style: normal;
 }
@@ -485,7 +858,13 @@ ruby rt {
   transform: translateY(0.6em);
 }
 
-.css-reveal[data-revealed] [data-word] {
+/* A split made again after a resize is shown at rest: the units are new, but the reveal is not. */
+.css-reveal[data-revealed="settled"] [data-word] {
+  opacity: 1;
+  transform: none;
+}
+
+.css-reveal[data-revealed=""] [data-word] {
   animation: rise 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   animation-delay: calc(var(--word) * 30ms);
 }
@@ -495,4 +874,42 @@ ruby rt {
     opacity: 1;
     transform: none;
   }
+}
+
+/*
+ * The boxes: a hairline inside every unit or mask of a level the panel asks for. An outline has no
+ * size and no place in the layout, so nothing it marks can move, and drawn inside the box a mask's
+ * clip never cuts it off. The mask's ring sits one pixel further in, so both show when both are on.
+ */
+[data-box="lines"],
+[data-boxes~="lines"] [data-target] [data-line] {
+  --box: var(--box-line);
+}
+
+[data-box="words"],
+[data-boxes~="words"] [data-target] [data-word] {
+  --box: var(--box-word);
+}
+
+[data-box="chars"],
+[data-boxes~="chars"] [data-target] [data-char] {
+  --box: var(--box-char);
+}
+
+[data-box="masks"],
+[data-boxes~="masks"] [data-target] [data-mask] {
+  --box: var(--box-mask);
+}
+
+/* Only inside a target: a case section carries a data-mask of its own, which is not a mask. */
+[data-boxes~="lines"] [data-target] [data-line],
+[data-boxes~="words"] [data-target] [data-word],
+[data-boxes~="chars"] [data-target] [data-char] {
+  outline: 1px solid var(--box);
+  outline-offset: -1px;
+}
+
+[data-boxes~="masks"] [data-target] [data-mask] {
+  outline: 1px dashed var(--box);
+  outline-offset: -2px;
 }

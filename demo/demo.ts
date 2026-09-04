@@ -359,10 +359,73 @@ function lineText(line: HTMLElement): string {
   return leading + (line.textContent ?? "");
 }
 
+/**
+ * The panel's Boxes toggles: a hairline inside every unit or mask of a level, drawn by the
+ * stylesheet off a list on the root, toggled from the panel and kept across reloads.
+ */
+const BOXES_KEY = "kugiri-demo-boxes";
+
+function setupBoxes() {
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-box]"));
+  const shown = new Set((localStorage.getItem(BOXES_KEY) ?? "").split(" ").filter(Boolean));
+
+  const apply = () => {
+    for (const button of buttons) {
+      button.setAttribute("aria-pressed", String(shown.has(button.dataset.box ?? "")));
+    }
+
+    if (shown.size > 0) {
+      document.documentElement.setAttribute("data-boxes", [...shown].join(" "));
+    } else {
+      document.documentElement.removeAttribute("data-boxes");
+    }
+
+    localStorage.setItem(BOXES_KEY, [...shown].join(" "));
+  };
+
+  for (const button of buttons) {
+    button.addEventListener("click", () => {
+      const level = button.dataset.box ?? "";
+
+      if (shown.has(level)) {
+        shown.delete(level);
+      } else {
+        shown.add(level);
+      }
+
+      apply();
+    });
+  }
+
+  apply();
+}
+
+/** What the case asks of the split, as the tags under its title: the unit, and anything off the default. */
+function describe(reveal: Reveal): string[] {
+  const tags: string[] = [reveal.unit];
+
+  if (reveal.mask.length === 0) {
+    tags.push("no mask");
+  } else if (reveal.mask.length !== 1 || reveal.mask[0] !== reveal.unit) {
+    tags.push(`mask ${reveal.mask.join(" ")}`);
+  }
+
+  if (reveal.ignore) {
+    tags.push(`ignore ${reveal.ignore}`);
+  }
+
+  if (reveal.css) {
+    tags.push("css reveal");
+  }
+
+  return tags;
+}
+
 class Demo {
   reveals: Reveal[] = [];
   observer: IntersectionObserver;
   readout: HTMLElement;
+  verdict: HTMLElement;
   splitTimes: number[] = [];
   longTasks = 0;
   frames = 0;
@@ -371,6 +434,7 @@ class Demo {
 
   constructor() {
     this.readout = document.querySelector<HTMLElement>("[data-readout]") as HTMLElement;
+    this.verdict = document.querySelector<HTMLElement>("[data-verdict]") as HTMLElement;
     this.observer = new IntersectionObserver(this.onIntersect, { rootMargin: "0px 0px -10% 0px" });
 
     for (const section of document.querySelectorAll<HTMLElement>("section[data-case]")) {
@@ -404,21 +468,85 @@ class Demo {
       this.render();
     }).observe({ entryTypes: ["longtask"] });
 
-    const nav = document.querySelector("[data-nav]");
-
+    // Every case gets its id, a permalink and its tags; every group gets its entry in the contents.
     for (const reveal of this.reveals) {
-      const link = document.createElement("a");
+      const id = reveal.section.dataset.case ?? "";
+      const meta = document.createElement("p");
+      const permalink = document.createElement("a");
 
-      link.href = `#${reveal.section.dataset.case}`;
-      link.textContent = reveal.section.dataset.case ?? "";
-      reveal.section.id = reveal.section.dataset.case ?? "";
-      nav?.append(link);
+      reveal.section.id = id;
+      meta.className = "case-meta";
+      permalink.href = `#${id}`;
+      permalink.textContent = `#${id}`;
+      meta.append(permalink);
+
+      for (const tag of describe(reveal)) {
+        const span = document.createElement("span");
+
+        span.textContent = tag;
+        meta.append(span);
+      }
+
+      reveal.section.querySelector(".case-title")?.after(meta);
     }
 
+    const toc = document.createElement("ul");
+
+    toc.className = "toc";
+
+    for (const group of document.querySelectorAll<HTMLElement>("section[data-group]")) {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      const list = document.createElement("ul");
+
+      group.id = `group-${group.dataset.group}`;
+      link.className = "toc-group";
+      link.href = `#${group.id}`;
+      link.textContent = group.querySelector("h2")?.textContent ?? group.id;
+      list.className = "toc-cases";
+
+      for (const reveal of this.reveals) {
+        if (!group.contains(reveal.section)) {
+          continue;
+        }
+
+        const entry = document.createElement("li");
+        const anchor = document.createElement("a");
+
+        anchor.href = `#${reveal.section.id}`;
+        anchor.textContent = reveal.section.querySelector(".case-title")?.textContent ?? reveal.section.id;
+        entry.append(anchor);
+        list.append(entry);
+      }
+
+      item.append(link, list);
+      toc.append(item);
+    }
+
+    document.querySelector("[data-nav]")?.append(toc);
     document.querySelector("[data-action=check]")?.addEventListener("click", this.check);
     document.querySelector("[data-action=replay]")?.addEventListener("click", this.replay);
 
+    setupBoxes();
     requestAnimationFrame(this.onFrame);
+
+    // A split is a snapshot of one layout, so the page does what a consumer has to: when the column
+    // the cases sit in changes width, everything reverts and splits again, with no reveal a second
+    // time. Height changes move no wrap (a phone's address bar collapsing on scroll is one), and a
+    // drag settles before the split.
+    const main = document.querySelector("main") as HTMLElement;
+    let width = main.clientWidth;
+    let timer = 0;
+
+    new ResizeObserver(() => {
+      if (main.clientWidth === width) {
+        return;
+      }
+
+      width = main.clientWidth;
+      clearTimeout(timer);
+      timer = window.setTimeout(this.resplit, 150);
+    }).observe(main);
 
     void document.fonts.ready.then(this.start);
   }
@@ -478,7 +606,8 @@ class Demo {
           duration: DURATION,
           delay: index * STAGGER[reveal.unit],
           easing: EASE,
-          fill: "both",
+          // Hidden until its turn comes; at the end, the unit's own resting state, with nothing to drop.
+          fill: "backwards",
         }
       )
     );
@@ -489,11 +618,6 @@ class Demo {
     void Promise.all(animations.map((animation) => animation.finished)).then(() => {
       for (const mask of masks) {
         mask.style.clipPath = "none";
-      }
-
-      // The reveal ends in the unit's own resting state, so the animations are simply dropped.
-      for (const animation of animations) {
-        animation.cancel();
       }
     });
   }
@@ -543,15 +667,75 @@ class Demo {
       }
     }
 
-    this.render(`checked: ${mismatches} mismatching`);
+    const pending = this.reveals.filter((reveal) => !reveal.split).length;
+    const checked = this.reveals.length - pending;
+    const parts: string[] = [];
+
+    if (checked === 0) {
+      parts.push("Nothing has split yet. Scroll to reveal the cases");
+    } else if (mismatches === 0) {
+      parts.push(`All ${checked} cases split as painted`);
+    } else {
+      parts.push(`${mismatches} of ${checked} cases do not match the paint`);
+    }
+
+    if (pending > 0 && checked > 0) {
+      parts.push(`${pending} not split yet`);
+    }
+
+    this.verdict.textContent = `${parts.join(". ")}.`;
+    this.render();
   };
 
-  /** Everything reverts, the painted lines are read again (a resize may have moved them), and every target waits for the viewport again. */
+  /** Everything reverts, the painted lines are read again (a resize may have moved them) once the fonts are in, and every target waits for the viewport again. */
+  /**
+   * Every split reverts and is made again for the new layout, its units at rest: the reveal does
+   * not play a second time. A target still waiting for the viewport only has its painted lines read
+   * again. All reverts come first and all reads next, so no read lands between writes.
+   */
+  resplit = () => {
+    this.verdict.textContent = "";
+
+    for (const reveal of this.reveals) {
+      const result = reveal.section.querySelector<HTMLElement>(".case-result");
+
+      reveal.section.removeAttribute("data-status");
+
+      if (result) {
+        result.textContent = "";
+      }
+
+      if (reveal.split) {
+        reveal.split.revert();
+        reveal.target.removeAttribute("data-revealed");
+      }
+    }
+
+    for (const reveal of this.reveals) {
+      reveal.expected = paintedLines(reveal.target, reveal.target, reveal.ignore);
+    }
+
+    for (const reveal of this.reveals) {
+      if (!reveal.split) {
+        continue;
+      }
+
+      const start = performance.now();
+
+      reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: reveal.mask, ignore: reveal.ignore });
+      this.splitTimes.push(performance.now() - start);
+      reveal.target.setAttribute("data-revealed", "settled");
+    }
+
+    this.render();
+  };
+
   replay = () => {
     this.splitTimes = [];
     this.longTasks = 0;
     this.frames = 0;
     this.slowFrames = 0;
+    this.verdict.textContent = "";
 
     for (const reveal of this.reveals) {
       reveal.split?.revert();
@@ -566,23 +750,18 @@ class Demo {
       }
     }
 
-    this.start();
+    void document.fonts.ready.then(this.start);
   };
 
-  render(note = "") {
+  render() {
     const total = this.splitTimes.reduce((sum, time) => sum + time, 0);
     const worst = this.splitTimes.reduce((max, time) => Math.max(max, time), 0);
 
     this.readout.textContent = [
-      `targets ${this.reveals.length}`,
-      `splits ${this.splitTimes.length}`,
-      `split total ${total.toFixed(1)}ms, worst ${worst.toFixed(1)}ms`,
-      `long tasks ${this.longTasks}`,
-      `slow frames ${this.slowFrames} / ${this.frames}`,
-      note,
-    ]
-      .filter(Boolean)
-      .join("\n");
+      `targets ${this.reveals.length}, splits ${this.splitTimes.length}`,
+      `split total ${total.toFixed(1)} ms, worst ${worst.toFixed(1)} ms`,
+      `long tasks ${this.longTasks}, slow frames ${this.slowFrames} / ${this.frames}`,
+    ].join("\n");
   }
 }
 

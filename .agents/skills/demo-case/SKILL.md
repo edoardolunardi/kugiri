@@ -14,7 +14,7 @@ untested.
 
 ```html
 <section data-case="drop-cap-words" data-unit="words">
-  <div><h2 class="case-title">Drop cap, split=words</h2><p class="case-expect">What must hold, in one or two sentences.</p><p class="case-result"></p></div>
+  <div><h3 class="case-title">Drop cap, split=words</h3><p class="case-expect">What must hold, in one or two sentences.</p><p class="case-result"></p></div>
   <div class="sample"><p class="body measure drop-cap" data-target>Copy long enough to wrap at least twice.</p></div>
 </section>
 ```
@@ -29,8 +29,10 @@ untested.
 - `data-target` marks the element that is split. One per section: the harness takes the first.
 - The `case-expect` copy says what the reader should see and what the check asserts. Keep it in the
   voice of the existing cases: plain sentences, no em dashes.
-- Group the section under the matching comment heading (`<!-- Lines -->`, `<!-- Rich content -->`,
-  `<!-- Breaking inside words -->`, and so on).
+- Put the section inside the matching `<section data-group>` (`lines`, `words-chars`, `links`,
+  `rich`, `breaking`, `scripts`, `floats`, `scale`). The group's `h2` is its entry in the table of
+  contents; the case's title, id and tags (unit, mask, ignore, css reveal) are read off the section
+  by the harness and shown under the title, so nothing else has to be written.
 
 Reuse the classes in `demo/demo.css` for the copy: `body` with `measure` (60ch) or `narrow`,
 `headline`, `title`, `subtitle`, plus modifiers such as `justify`, `indent`, `drop-cap`,
@@ -67,4 +69,6 @@ npm run dev                                # then open http://localhost:4173, sc
 ```
 
 A failing case prints `painted N lines, split M` with both line lists, or `N lines as painted, but
-line K moved by x, y`. To see what the split actually produced, use the `browser-probe` skill.
+line K moved by x, y`. The **Boxes** toggles in the panel outline every line, word, character and
+mask, which is the quickest look at what the split produced; for numbers, use the `browser-probe`
+skill.

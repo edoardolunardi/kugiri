@@ -6,7 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The demo outlines every line, word, character and mask on request, from a
+  **Boxes** control in the panel, so what the split produced is visible on the
+  page.
+
 ### Changed
+
+- The demo page reads as a specimen book: the cases sit in named groups with a
+  table of contents that stays in view, every case shows its id and what it asks
+  of the split, and the controls sit in one panel that keeps out of the text.
+  The page is set in Geist and Geist Mono, self-hosted as variable faces. It
+  reverts and splits every case again when its column changes width, with no
+  reveal a second time, the way a consumer of the library has to, and its
+  header shows the code for the reveal and for the resize, in plain browser
+  APIs. The README now says so too: a split is a snapshot of one layout, and
+  nothing animates it or watches for the next one.
 
 - Releases publish from GitHub Actions. `npm run release` now ends by pushing
   the tag, and the Release workflow publishes to npm through trusted publishing,

@@ -4,163 +4,258 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>kugiri demo</title>
+    <link rel="preload" href="./fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./demo.css" />
   </head>
   <body>
-    <header>
-      <h1>kugiri</h1>
-      <p>
-        A splitter that keeps the lines the browser painted. Every case below is one target in a situation running text can be
-        in. Scroll to reveal, then <strong>Check</strong>: each split is compared with the lines the browser had painted before
-        it ran. <strong>Replay</strong> reverts everything and runs it again. The whole library is one ES module,
-        about 6.8 kB minified and gzipped, with no dependencies.
-      </p>
-      <nav data-nav></nav>
-    </header>
+    <a class="skip" href="#cases">Skip to the cases</a>
 
-    <div class="panel">
-      <p data-readout>targets 0</p>
-      <div>
-        <button type="button" class="primary" data-action="check">Check lines</button>
-        <button type="button" data-action="replay">Replay all</button>
+    <div class="page">
+      <header>
+        <h1>kugiri</h1>
+        <p class="lede">Splits text into lines, words and characters exactly where the browser already broke it.</p>
+        <p>
+          Every case below is one piece of text in a situation running text can be in: a drop cap, a link that wraps, a
+          float, a second script. Each one splits and reveals as it scrolls into view.
+        </p>
+        <ul class="how">
+          <li><strong>Check lines</strong> compares every split with the lines the browser had painted before it ran, text and geometry.</li>
+          <li><strong>Replay all</strong> reverts every split and runs it again.</li>
+          <li><strong>Boxes</strong> outlines every line, word, character or mask the split made, so you can see what it produced.</li>
+        </ul>
+        <p>
+          kugiri is a split engine and nothing more. It writes the units and stops: no animation, no watching the
+          viewport, the fonts or the text. Both belong to the code that calls it, in whatever library it likes. The two
+          snippets below are not part of the library and do not ship with it. They are this page's own code, shown as
+          one way to do each, in plain browser APIs.
+        </p>
+        <p>
+          <strong>The reveal, an example.</strong> Each unit rises out of its mask with the Web Animations API,
+          staggered by its index. The <a href="#css-reveal">CSS-only reveal</a> case does the same from a stylesheet,
+          off the index the split writes as a custom property; GSAP or Motion would take the same elements.
+        </p>
+        <pre><code>// Not part of kugiri: this page's own reveal, one way to animate the units.
+const split = splitText(target, { type: ["words"], mask: "words" });
+
+for (const mask of split.masks) {
+  mask.style.clipPath = "inset(0)";
+}
+
+const reveal = split.words.map((word, index) =>
+  word.animate(
+    [
+      { transform: "translateY(100%)", opacity: 0 },
+      { transform: "none", opacity: 1 },
+    ],
+    {
+      duration: 1000,
+      delay: index * 30,
+      easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+      fill: "backwards", // hidden until its turn, at rest when done
+    }
+  )
+);
+
+// At rest a mask would clip descenders, so it goes once the reveal is over.
+await Promise.all(reveal.map((animation) => animation.finished));
+
+for (const mask of split.masks) {
+  mask.style.clipPath = "none";
+}</code></pre>
+        <p>
+          <strong>The next layout, an example.</strong> A split is a snapshot of the layout the text had when it ran,
+          and nothing splits again on its own. This page watches the width of the column the cases sit in and, when it
+          changes, reverts every split and splits again, with no reveal a second time: the text stays responsive and
+          the units sit at rest.
+        </p>
+        <pre><code>// Not part of kugiri: this page's own resize handling, one way to do it.
+let width = main.clientWidth;
+let timer = 0;
+
+new ResizeObserver(() => {
+  if (main.clientWidth === width) {
+    return; // a taller viewport moves no wrap
+  }
+
+  width = main.clientWidth;
+  clearTimeout(timer);
+  timer = setTimeout(resplit, 150); // once a drag settles
+}).observe(main);</code></pre>
+        <p>
+          One ES module, about 6.8 kB minified and gzipped, with no dependencies.
+          <a href="https://github.com/edoardolunardi/kugiri">Source and README on GitHub</a>.
+        </p>
+      </header>
+
+      <div class="side">
+        <nav aria-label="Cases" data-nav></nav>
+
+        <div class="panel">
+          <div class="actions">
+            <button type="button" class="primary" data-action="check">Check lines</button>
+            <button type="button" data-action="replay">Replay all</button>
+          </div>
+          <fieldset class="boxes">
+            <legend class="label">Boxes</legend>
+            <div class="boxes-list">
+              <button type="button" data-box="lines" aria-pressed="false">Lines</button>
+              <button type="button" data-box="words" aria-pressed="false">Words</button>
+              <button type="button" data-box="chars" aria-pressed="false">Chars</button>
+              <button type="button" data-box="masks" aria-pressed="false">Masks</button>
+            </div>
+          </fieldset>
+          <p class="verdict" role="status" data-verdict></p>
+          <p class="readout" data-readout>targets 0</p>
+        </div>
       </div>
-    </div>
 
-    <!-- Lines -->
+      <main id="cases">
+        <section data-group="lines">
+          <h2 class="group-title">Lines</h2>
 
-    <section data-case="single-line">
-      <div><h2 class="case-title">Single line</h2><p class="case-expect">One line, one mask. Nothing to wrap.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="headline" data-target>Set in metal, read on glass</h3></div>
-    </section>
+        <section data-case="single-line">
+          <div><h3 class="case-title">Single line</h3><p class="case-expect">One line, one mask. Nothing to wrap.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="headline" data-target>Set in metal, read on glass</h3></div>
+        </section>
 
-    <section data-case="balance-pre-line">
-      <div><h2 class="case-title">Balance + authored break</h2><p class="case-expect">text-wrap: balance evens the lines and the newline is a forced break. A balanced line fits with no slack, so any splitter that widens words flips it.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="headline wide balance pre-line" data-target>Five centuries of setting type by hand
+        <section data-case="balance-pre-line">
+          <div><h3 class="case-title">Balance + authored break</h3><p class="case-expect">text-wrap: balance evens the lines and the newline is a forced break. A balanced line fits with no slack, so any splitter that widens words flips it.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="headline wide balance pre-line" data-target>Five centuries of setting type by hand
 and still arguing about the spacing</h3></div>
-    </section>
+        </section>
 
-    <section data-case="rag">
-      <div><h2 class="case-title">Ragged, no balance</h2><p class="case-expect">Same copy, browser rag. Each line runs to the right edge.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="headline wide" data-target>Five centuries of setting type by hand and still arguing about the spacing</h3></div>
-    </section>
+        <section data-case="rag">
+          <div><h3 class="case-title">Ragged, no balance</h3><p class="case-expect">Same copy, browser rag. Each line runs to the right edge.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="headline wide" data-target>Five centuries of setting type by hand and still arguing about the spacing</h3></div>
+        </section>
 
-    <section data-case="pretty">
-      <div><h2 class="case-title">text-wrap: pretty</h2><p class="case-expect">No orphan on the last line. The split must not reintroduce one.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="title headline-measure pretty" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</h3></div>
-    </section>
+        <section data-case="pretty">
+          <div><h3 class="case-title">text-wrap: pretty</h3><p class="case-expect">No orphan on the last line. The split must not reintroduce one.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="title headline-measure pretty" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</h3></div>
+        </section>
 
-    <section data-case="measure">
-      <div><h2 class="case-title">Paragraph at the measure</h2><p class="case-expect">Body copy capped at 60ch. Ordinary wrapping.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="measure">
+          <div><h3 class="case-title">Paragraph at the measure</h3><p class="case-expect">Body copy capped at 60ch. Ordinary wrapping.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="inline-marks">
-      <div><h2 class="case-title">Inline marks across lines</h2><p class="case-expect">A link, strong, em, a superscript and a coloured span, some wrapping mid-element. No empty clones; the link stays one tab stop per line.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was <strong>drawn, cut and cast by a hand</strong> that argued with <em>the one before it</em>, and it is <a href="#inline-marks" class="link dashed">the space between the letters, not any single glyph, that decides whether a page</a> is read or skipped<sup>1</sup>. <span class="mark">Colour marks wrap like any other span.</span></p></div>
-    </section>
+        <section data-case="inline-marks">
+          <div><h3 class="case-title">Inline marks across lines</h3><p class="case-expect">A link, strong, em, a superscript and a coloured span, some wrapping mid-element. No empty clones; the link stays one tab stop per line.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was <strong>drawn, cut and cast by a hand</strong> that argued with <em>the one before it</em>, and it is <a href="#inline-marks" class="link dashed">the space between the letters, not any single glyph, that decides whether a page</a> is read or skipped<sup>1</sup>. <span class="mark">Colour marks wrap like any other span.</span></p></div>
+        </section>
 
-    <section data-case="br">
-      <div><h2 class="case-title">Explicit &lt;br&gt;</h2><p class="case-expect">Two br tags, three lines, whatever the width.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="headline" data-target>Set in metal<br />proofed on paper<br />read on glass</h3></div>
-    </section>
+        <section data-case="br">
+          <div><h3 class="case-title">Explicit &lt;br&gt;</h3><p class="case-expect">Two br tags, three lines, whatever the width.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="headline" data-target>Set in metal<br />proofed on paper<br />read on glass</h3></div>
+        </section>
 
-    <section data-case="pre-line-blank">
-      <div><h2 class="case-title">pre-line with a blank line</h2><p class="case-expect">A paragraph break inside one target: the empty line stays empty.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure pre-line" data-target>A first paragraph of the specimen, written as text.
+        <section data-case="pre-line-blank">
+          <div><h3 class="case-title">pre-line with a blank line</h3><p class="case-expect">A paragraph break inside one target: the empty line stays empty.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure pre-line" data-target>A first paragraph of the specimen, written as text.
 
 A second one after a blank line, which pre-line keeps.</p></div>
-    </section>
+        </section>
 
-    <section data-case="pre-wrap">
-      <div><h2 class="case-title">pre-wrap, double spaces</h2><p class="case-expect">Runs of spaces survive. Still wraps at the measure.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure pre-wrap" data-target>Two  spaces  between  words,   three here,
+        <section data-case="pre-wrap">
+          <div><h3 class="case-title">pre-wrap, double spaces</h3><p class="case-expect">Runs of spaces survive. Still wraps at the measure.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure pre-wrap" data-target>Two  spaces  between  words,   three here,
 and a newline, the way a typewriter would set them. The rest of this sentence is long enough to wrap at the measure.</p></div>
-    </section>
+        </section>
 
-    <section data-case="align">
-      <div><h2 class="case-title">Centered and right aligned</h2><p class="case-expect">Alignment is inherited by the line blocks, so the rag stays where it was.</p><p class="case-result"></p></div>
-      <div class="sample rich"><p class="body measure center" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</p><p class="body measure right" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="align">
+          <div><h3 class="case-title">Centered and right aligned</h3><p class="case-expect">Alignment is inherited by the line blocks, so the rag stays where it was.</p><p class="case-result"></p></div>
+          <div class="sample rich"><p class="body measure center" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</p><p class="body measure right" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="justify">
-      <div><h2 class="case-title">Justified</h2><p class="case-expect">Word spacing stretches per line; the last line stays ragged. Each line block gets text-align-last so the stretch survives the cut.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure justify" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="justify">
+          <div><h3 class="case-title">Justified</h3><p class="case-expect">Word spacing stretches per line; the last line stays ragged. Each line block gets text-align-last so the stretch survives the cut.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure justify" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="narrow">
-      <div><h2 class="case-title">Narrow column</h2><p class="case-expect">Many short lines. The stagger should not drag.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body narrow" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="narrow">
+          <div><h3 class="case-title">Narrow column</h3><p class="case-expect">Many short lines. The stagger should not drag.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body narrow" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="mono-label">
-      <div><h2 class="case-title">Tracked uppercase label</h2><p class="case-expect">Letter-spacing and uppercase. Widths must match the pre-split paint.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="mono narrow" data-target>A tracked uppercase running head that goes on long enough to wrap twice in a narrow box</p></div>
-    </section>
+        <section data-case="mono-label">
+          <div><h3 class="case-title">Tracked uppercase label</h3><p class="case-expect">Letter-spacing and uppercase. Widths must match the pre-split paint.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="mono narrow" data-target>A tracked uppercase running head that goes on long enough to wrap twice in a narrow box</p></div>
+        </section>
 
-    <section data-case="small-caps">
-      <div><h2 class="case-title">Small caps</h2><p class="case-expect">A synthesized variant. Same widths before and after.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure small-caps" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></div>
-    </section>
+        <section data-case="small-caps">
+          <div><h3 class="case-title">Small caps</h3><p class="case-expect">A synthesized variant. Same widths before and after.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure small-caps" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></div>
+        </section>
 
-    <!-- Words and chars -->
+        </section>
 
-    <section data-case="words" data-unit="words">
-      <div><h2 class="case-title">split=words</h2><p class="case-expect">Each word rises under its own mask, inside lines that keep the paint. Punctuation stays with its word.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="title headline-measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</h3></div>
-    </section>
+        <section data-group="words-chars">
+          <h2 class="group-title">Words and characters</h2>
 
-    <section data-case="chars" data-unit="chars">
-      <div><h2 class="case-title">split=chars</h2><p class="case-expect">Every grapheme is a unit, emoji included. Kerning between letters is lost; that is inherent to a char split.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="title headline-measure" data-target>Hand-set AVATAR in metal 🖋️ with WAVY kerning to match</h3></div>
-    </section>
+        <section data-case="words" data-unit="words">
+          <div><h3 class="case-title">split=words</h3><p class="case-expect">Each word rises under its own mask, inside lines that keep the paint. Punctuation stays with its word.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="title headline-measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</h3></div>
+        </section>
 
-    <section data-case="words-under-lines" data-unit="words" data-mask="lines">
-      <div><h2 class="case-title">split=words, mask=lines</h2><p class="case-expect">Words are the units, lines are the wrappers: each word rises from under its line's clip.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="title headline-measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</h3></div>
-    </section>
+        <section data-case="chars" data-unit="chars">
+          <div><h3 class="case-title">split=chars</h3><p class="case-expect">Every grapheme is a unit, emoji included. Kerning between letters is lost; that is inherent to a char split.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="title headline-measure" data-target>Hand-set AVATAR in metal 🖋️ with WAVY kerning to match</h3></div>
+        </section>
 
-    <section data-case="lines-unmasked" data-mask="none">
-      <div><h2 class="case-title">split=lines, mask=none</h2><p class="case-expect">No wrappers at all: the line blocks rise and fade in the open.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="words-under-lines" data-unit="words" data-mask="lines">
+          <div><h3 class="case-title">split=words, mask=lines</h3><p class="case-expect">Words are the units, lines are the wrappers: each word rises from under its line's clip.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="title headline-measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</h3></div>
+        </section>
 
-    <section data-case="css-reveal" data-unit="words" data-mask="none" data-reveal="css">
-      <div><h2 class="case-title">CSS-only reveal</h2><p class="case-expect">No script animation: the target is split into words and gets data-revealed; the stylesheet staggers off the --word index the split wrote.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure css-reveal" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="lines-unmasked" data-mask="none">
+          <div><h3 class="case-title">split=lines, mask=none</h3><p class="case-expect">No wrappers at all: the line blocks rise and fade in the open.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <!-- Links -->
+        <section data-case="css-reveal" data-unit="words" data-mask="none" data-reveal="css">
+          <div><h3 class="case-title">CSS-only reveal</h3><p class="case-expect">No script animation: the target is split into words and gets data-revealed; the stylesheet staggers off the --word index the split wrote.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure css-reveal" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="link-lines">
-      <div><h2 class="case-title">Underlined link across lines</h2><p class="case-expect">A solid underline through a link that wraps. Each line's clone keeps the rule; no gap at the cut.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Read the <a href="#link-lines" class="link">full account of how a punchcutter turns a pencil sketch into a steel punch and what that means for the face on the page</a> before the specimen sheet.</p></div>
-    </section>
+        </section>
 
-    <section data-case="link-words" data-unit="words">
-      <div><h2 class="case-title">Underlined link, split=words</h2><p class="case-expect">Words are inline-blocks, which a decoration never reaches. Every word carries the rule itself and follows the hover colour.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Read the <a href="#link-words" class="link">full account of how a punchcutter turns a pencil sketch into a steel punch</a> before the specimen sheet.</p></div>
-    </section>
+        <section data-group="links">
+          <h2 class="group-title">Links</h2>
 
-    <section data-case="link-chars" data-unit="chars">
-      <div><h2 class="case-title">Underlined link, split=chars</h2><p class="case-expect">Same rule per grapheme. Hover the link: the whole rule changes colour together.</p><p class="case-result"></p></div>
-      <div class="sample"><h3 class="subtitle headline-measure" data-target><a href="#link-chars" class="link">A heading set entirely as a link</a></h3></div>
-    </section>
+        <section data-case="link-lines">
+          <div><h3 class="case-title">Underlined link across lines</h3><p class="case-expect">A solid underline through a link that wraps. Each line's clone keeps the rule; no gap at the cut.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Read the <a href="#link-lines" class="link">full account of how a punchcutter turns a pencil sketch into a steel punch and what that means for the face on the page</a> before the specimen sheet.</p></div>
+        </section>
 
-    <section data-case="link-nested" data-unit="words">
-      <div><h2 class="case-title">Marks inside a link, split=words</h2><p class="case-expect">The underline is declared on the link, the words sit inside em and strong. The chain in between inherits, so the rule survives.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Every <a href="#link-nested" class="link dashed"><em>specimen sheet</em> shows the face in <strong>bold and italic at once</strong> and in colour</a> before anyone buys it.</p></div>
-    </section>
+        <section data-case="link-words" data-unit="words">
+          <div><h3 class="case-title">Underlined link, split=words</h3><p class="case-expect">Words are inline-blocks, which a decoration never reaches. Every word carries the rule itself and follows the hover colour.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Read the <a href="#link-words" class="link">full account of how a punchcutter turns a pencil sketch into a steel punch</a> before the specimen sheet.</p></div>
+        </section>
 
-    <section data-case="link-host-words" data-unit="words">
-      <div><h2 class="case-title">Target inside a link, split=words</h2><p class="case-expect">The decoration is declared above the target. The target takes it as its own, so the words still draw it.</p><p class="case-result"></p></div>
-      <div class="sample"><a href="#link-host-words" class="link"><span class="subtitle headline-measure" style="display:block" data-target>A link the length of a running head, long enough to wrap onto a second line</span></a></div>
-    </section>
+        <section data-case="link-chars" data-unit="chars">
+          <div><h3 class="case-title">Underlined link, split=chars</h3><p class="case-expect">Same rule per grapheme. Hover the link: the whole rule changes colour together.</p><p class="case-result"></p></div>
+          <div class="sample"><h3 class="subtitle headline-measure" data-target><a href="#link-chars" class="link">A heading set entirely as a link</a></h3></div>
+        </section>
 
-    <!-- Rich content -->
+        <section data-case="link-nested" data-unit="words">
+          <div><h3 class="case-title">Marks inside a link, split=words</h3><p class="case-expect">The underline is declared on the link, the words sit inside em and strong. The chain in between inherits, so the rule survives.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Every <a href="#link-nested" class="link dashed"><em>specimen sheet</em> shows the face in <strong>bold and italic at once</strong> and in colour</a> before anyone buys it.</p></div>
+        </section>
 
-    <section data-case="rich-mixed">
-      <div><h2 class="case-title">Rich text, anything inside</h2><p class="case-expect">Headings, paragraphs, list items and the citation split per painted line inside their own blocks; the media tile, the button row and the table are not text, so they are left exactly where they are and are not units.</p><p class="case-result"></p></div>
-      <div class="sample"><div class="rich body" data-target>
+        <section data-case="link-host-words" data-unit="words">
+          <div><h3 class="case-title">Target inside a link, split=words</h3><p class="case-expect">The decoration is declared above the target. The target takes it as its own, so the words still draw it.</p><p class="case-result"></p></div>
+          <div class="sample"><a href="#link-host-words" class="link"><span class="subtitle headline-measure" style="display:block" data-target>A link the length of a running head, long enough to wrap onto a second line</span></a></div>
+        </section>
+
+        </section>
+
+        <section data-group="rich">
+          <h2 class="group-title">Rich content</h2>
+
+        <section data-case="rich-mixed">
+          <div><h3 class="case-title">Rich text, anything inside</h3><p class="case-expect">Headings, paragraphs, list items and the citation split per painted line inside their own blocks; the media tile, the button row and the table are not text, so they are left exactly where they are and are not units.</p><p class="case-result"></p></div>
+          <div class="sample"><div class="rich body" data-target>
         <h3>A specimen with everything in it</h3>
         <p class="measure">Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p>
         <div class="tile"></div>
@@ -173,140 +268,155 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
         <table><tbody><tr><td>Face</td><td>Garamond</td></tr><tr><td>Body</td><td>11 pt</td></tr></tbody></table>
         <blockquote><p>Type is a beautiful group of letters, not a group of beautiful letters.</p><cite>Matthew Carter</cite></blockquote>
       </div></div>
-    </section>
+        </section>
 
-    <section data-case="ignore" data-unit="words" data-ignore="[data-keep]">
-      <div><h2 class="case-title">ignore selector, words</h2><p class="case-expect">The chip and the footnote mark are never wrapped or counted; the words around them still are.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Letterpress sits next to <span data-keep class="chip">offset litho</span> in the pressroom<sup data-keep>2</sup>, and both print the same face, which is why the chip has to travel with its line.</p></div>
-    </section>
+        <section data-case="ignore" data-unit="words" data-ignore="[data-keep]">
+          <div><h3 class="case-title">ignore selector, words</h3><p class="case-expect">The chip and the footnote mark are never wrapped or counted; the words around them still are.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Letterpress sits next to <span data-keep class="chip">offset litho</span> in the pressroom<sup data-keep>2</sup>, and both print the same face, which is why the chip has to travel with its line.</p></div>
+        </section>
 
-    <section data-case="inline-block">
-      <div><h2 class="case-title">Inline-block chip in the copy</h2><p class="case-expect">An atomic inline box in the flow. It cannot break inside, and wraps as a unit.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Letterpress sits next to <span class="chip">offset litho</span> in the pressroom, and both print the same face, which is why the chip has to travel with its line.</p></div>
-    </section>
+        <section data-case="inline-block">
+          <div><h3 class="case-title">Inline-block chip in the copy</h3><p class="case-expect">An atomic inline box in the flow. It cannot break inside, and wraps as a unit.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Letterpress sits next to <span class="chip">offset litho</span> in the pressroom, and both print the same face, which is why the chip has to travel with its line.</p></div>
+        </section>
 
-    <section data-case="inline-icon">
-      <div><h2 class="case-title">Inline icon mid-sentence</h2><p class="case-expect">An SVG is not text. It rides along on its line and is never pruned as an empty element.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Open the specimen <span class="icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 13 3M6 3h7v7" fill="none" stroke="currentColor" stroke-width="1.5" /></svg></span> and then the type catalogue <span class="icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h12M9 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg></span> which wraps this sentence past the measure.</p></div>
-    </section>
+        <section data-case="inline-icon">
+          <div><h3 class="case-title">Inline icon mid-sentence</h3><p class="case-expect">An SVG is not text. It rides along on its line and is never pruned as an empty element.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Open the specimen <span class="icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 13.5 12.5 3.5M5.5 3.5h7v7" fill="none" stroke="currentColor" stroke-width="1.5" /></svg></span> and then the type catalogue <span class="icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8h12M8.5 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg></span> which wraps this sentence past the measure.</p></div>
+        </section>
 
-    <section data-case="custom-element" data-unit="words">
-      <div><h2 class="case-title">Custom elements inline</h2><p class="case-expect">An inline custom element wraps like any inline element, so it is cut into like one; an inline-block custom element is a box of its own and stays one piece.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was <demo-atom class="mark">drawn, cut and cast by a hand that argued with the one before it</demo-atom>, and it is <demo-chip class="chip">the spacing</demo-chip> that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="custom-element" data-unit="words">
+          <div><h3 class="case-title">Custom elements inline</h3><p class="case-expect">An inline custom element wraps like any inline element, so it is cut into like one; an inline-block custom element is a box of its own and stays one piece.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was <demo-atom class="mark">drawn, cut and cast by a hand that argued with the one before it</demo-atom>, and it is <demo-chip class="chip">the spacing</demo-chip> that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="hidden">
-      <div><h2 class="case-title">Hidden content (closed details)</h2><p class="case-expect">The paragraph splits. The summary is a box of its own (its caret is inline content on its first line) and the closed body is hidden: neither is text to split, so both are left exactly as they are and are not units, and opening the note later shows plain copy.</p><p class="case-result"></p></div>
-      <div class="sample"><div class="body measure" data-target><p>A specimen sheet shows the face at every size it is cast in, with a note on the casting folded away under it.</p><details><summary>A note on the casting of this face, long enough to wrap onto a second line when the measure is narrow</summary><p>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></details></div></div>
-    </section>
+        <section data-case="hidden">
+          <div><h3 class="case-title">Hidden content (closed details)</h3><p class="case-expect">The paragraph splits. The summary is a box of its own (its caret is inline content on its first line) and the closed body is hidden: neither is text to split, so both are left exactly as they are and are not units, and opening the note later shows plain copy.</p><p class="case-result"></p></div>
+          <div class="sample"><div class="body measure" data-target><p>A specimen sheet shows the face at every size it is cast in, with a note on the casting folded away under it.</p><details><summary>A note on the casting of this face, long enough to wrap onto a second line when the measure is narrow</summary><p>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></details></div></div>
+        </section>
 
-    <!-- Breaking inside words -->
+        </section>
 
-    <section data-case="long-word">
-      <div><h2 class="case-title">Unbreakable word, overflow-wrap</h2><p class="case-expect">The browser breaks inside the word (overflow-wrap: anywhere). The cut lands inside the word, exactly where the paint broke it.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body narrow anywhere" data-target>Reference https://www.example.org/specimens/very-long-slug-that-never-ends-and-keeps-going-until-the-box-gives-up and the compositor's dread, Pneumonoultramicroscopicsilicovolcanoconiosis.</p></div>
-    </section>
+        <section data-group="breaking">
+          <h2 class="group-title">Breaking inside words</h2>
 
-    <section data-case="hyphens">
-      <div><h2 class="case-title">hyphens: auto</h2><p class="case-expect">The browser hyphenates long words at the line end. The split keeps the break and restates the hyphen the browser drew.</p><p class="case-result"></p></div>
-      <div class="sample"><p lang="en" class="body narrow hyphens" data-target>Typographical characterisation of letterform irregularities demands extraordinarily conscientious punchcutters.</p></div>
-    </section>
+        <section data-case="long-word">
+          <div><h3 class="case-title">Unbreakable word, overflow-wrap</h3><p class="case-expect">The browser breaks inside the word (overflow-wrap: anywhere). The cut lands inside the word, exactly where the paint broke it.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body narrow anywhere" data-target>Reference https://www.example.org/specimens/very-long-slug-that-never-ends-and-keeps-going-until-the-box-gives-up and the compositor's dread, Pneumonoultramicroscopicsilicovolcanoconiosis.</p></div>
+        </section>
 
-    <section data-case="hyphens-words" data-unit="words">
-      <div><h2 class="case-title">hyphens: auto, split=words</h2><p class="case-expect">A word broken across two lines becomes two units, the first ending in the drawn hyphen.</p><p class="case-result"></p></div>
-      <div class="sample"><p lang="en" class="body narrow hyphens" data-target>Typographical characterisation of letterform irregularities demands extraordinarily conscientious punchcutters.</p></div>
-    </section>
+        <section data-case="hyphens">
+          <div><h3 class="case-title">hyphens: auto</h3><p class="case-expect">The browser hyphenates long words at the line end. The split keeps the break and restates the hyphen the browser drew.</p><p class="case-result"></p></div>
+          <div class="sample"><p lang="en" class="body narrow hyphens" data-target>Typographical characterisation of letterform irregularities demands extraordinarily conscientious punchcutters.</p></div>
+        </section>
 
-    <section data-case="soft-hyphen">
-      <div><h2 class="case-title">Soft hyphens and &lt;wbr&gt;</h2><p class="case-expect">Manual break opportunities. A soft hyphen the browser used shows its hyphen; a wbr is never a piece.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body narrow" data-target>Typo&shy;graphical charac&shy;terisation of letter&shy;form irregu&shy;larities demands extra<wbr />ordinarily con<wbr />scientious punch<wbr />cutters.</p></div>
-    </section>
+        <section data-case="hyphens-words" data-unit="words">
+          <div><h3 class="case-title">hyphens: auto, split=words</h3><p class="case-expect">A word broken across two lines becomes two units, the first ending in the drawn hyphen.</p><p class="case-result"></p></div>
+          <div class="sample"><p lang="en" class="body narrow hyphens" data-target>Typographical characterisation of letterform irregularities demands extraordinarily conscientious punchcutters.</p></div>
+        </section>
 
-    <!-- Scripts -->
+        <section data-case="soft-hyphen">
+          <div><h3 class="case-title">Soft hyphens and &lt;wbr&gt;</h3><p class="case-expect">Manual break opportunities. A soft hyphen the browser used shows its hyphen; a wbr is never a piece.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body narrow" data-target>Typo&shy;graphical charac&shy;terisation of letter&shy;form irregu&shy;larities demands extra<wbr />ordinarily con<wbr />scientious punch<wbr />cutters.</p></div>
+        </section>
 
-    <section data-case="rtl">
-      <div><h2 class="case-title">Right-to-left (Arabic)</h2><p class="case-expect">Lines wrap from the right. The rag sits on the left and the reveal order follows the reading order.</p><p class="case-result"></p></div>
-      <div class="sample"><p dir="rtl" lang="ar" class="body measure" data-target>الحروف ليست شيئًا صامتًا. كل حرف رُسم وقُطع وصُبّ بيدٍ جادلت اليد التي سبقتها، وما يقرر إن كانت الصفحة ستُقرأ أم تُتجاوز هو المسافة بين الحروف، لا أي حرف بمفرده.</p></div>
-    </section>
+        </section>
 
-    <section data-case="cjk">
-      <div><h2 class="case-title">No spaces (Japanese)</h2><p class="case-expect">The browser wraps between characters. The segmenter finds the words, so a word split works too.</p><p class="case-result"></p></div>
-      <div class="sample"><p lang="ja" class="body measure" data-target>活字は黙っているものではありません。どの文字も、前の職人と言い争った手によって描かれ、彫られ、鋳造されました。ページが読まれるか飛ばされるかを決めるのは、どれか一つの字形ではなく、文字と文字のあいだの空間なのです。</p></div>
-    </section>
+        <section data-group="scripts">
+          <h2 class="group-title">Scripts</h2>
 
-    <section data-case="cjk-words" data-unit="words">
-      <div><h2 class="case-title">Japanese, split=words</h2><p class="case-expect">Word units without a single space in the source.</p><p class="case-result"></p></div>
-      <div class="sample"><p lang="ja" class="body measure" data-target>活字は黙っているものではありません。どの文字も、前の職人と言い争った手によって描かれ、彫られ、鋳造されました。</p></div>
-    </section>
+        <section data-case="rtl">
+          <div><h3 class="case-title">Right-to-left (Arabic)</h3><p class="case-expect">Lines wrap from the right. The rag sits on the left and the reveal order follows the reading order.</p><p class="case-result"></p></div>
+          <div class="sample"><p dir="rtl" lang="ar" class="body measure" data-target>الحروف ليست شيئًا صامتًا. كل حرف رُسم وقُطع وصُبّ بيدٍ جادلت اليد التي سبقتها، وما يقرر إن كانت الصفحة ستُقرأ أم تُتجاوز هو المسافة بين الحروف، لا أي حرف بمفرده.</p></div>
+        </section>
 
-    <section data-case="emoji">
-      <div><h2 class="case-title">Emoji and combining marks</h2><p class="case-expect">Grapheme clusters stay whole across the split.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Press notes 🧑‍🎨🖋️ with a flag 🇯🇵, a skin tone 👍🏽, café naïve résumé, and Zürich, all wrapping once the sentence is long enough to need it.</p></div>
-    </section>
+        <section data-case="cjk">
+          <div><h3 class="case-title">No spaces (Japanese)</h3><p class="case-expect">The browser wraps between characters. The segmenter finds the words, so a word split works too.</p><p class="case-result"></p></div>
+          <div class="sample"><p lang="ja" class="body measure" data-target>活字は黙っているものではありません。どの文字も、前の職人と言い争った手によって描かれ、彫られ、鋳造されました。ページが読まれるか飛ばされるかを決めるのは、どれか一つの字形ではなく、文字と文字のあいだの空間なのです。</p></div>
+        </section>
 
-    <section data-case="ruby">
-      <div><h2 class="case-title">Ruby annotations</h2><p class="case-expect">Ruby is inline-level and owns its base and annotation: one piece per ruby, never cut inside.</p><p class="case-result"></p></div>
-      <div class="sample"><p lang="ja" class="body narrow" data-target><ruby>活版<rt>かっぱん</rt></ruby>印刷は十五世紀の<ruby>欧州<rt>おうしゅう</rt></ruby>で広まり、書物の姿を大きく変えました。</p></div>
-    </section>
+        <section data-case="cjk-words" data-unit="words">
+          <div><h3 class="case-title">Japanese, split=words</h3><p class="case-expect">Word units without a single space in the source.</p><p class="case-result"></p></div>
+          <div class="sample"><p lang="ja" class="body measure" data-target>活字は黙っているものではありません。どの文字も、前の職人と言い争った手によって描かれ、彫られ、鋳造されました。</p></div>
+        </section>
 
-    <section data-case="vertical">
-      <div><h2 class="case-title">Vertical writing mode</h2><p class="case-expect">writing-mode: vertical-rl. Lines are columns read right to left; the line blocks stack the same way.</p><p class="case-result"></p></div>
-      <div class="sample"><p lang="ja" class="body vertical" data-target>活字は黙っているものではありません。どの文字も、前の職人と言い争った手によって描かれ、彫られ、鋳造されました。ページが読まれるかどうかを決めるのは、文字のあいだの空間なのです。</p></div>
-    </section>
+        <section data-case="emoji">
+          <div><h3 class="case-title">Emoji and combining marks</h3><p class="case-expect">Grapheme clusters stay whole across the split.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Press notes 🧑‍🎨🖋️ with a flag 🇯🇵, a skin tone 👍🏽, café naïve résumé, and Zürich, all wrapping once the sentence is long enough to need it.</p></div>
+        </section>
 
-    <!-- First letter, first line, indents, floats, columns -->
+        <section data-case="ruby">
+          <div><h3 class="case-title">Ruby annotations</h3><p class="case-expect">Ruby is inline-level and owns its base and annotation: one piece per ruby, never cut inside.</p><p class="case-result"></p></div>
+          <div class="sample"><p lang="ja" class="body narrow" data-target><ruby>活版<rt>かっぱん</rt></ruby>印刷は十五世紀の<ruby>欧州<rt>おうしゅう</rt></ruby>で広まり、書物の姿を大きく変えました。</p></div>
+        </section>
 
-    <section data-case="first-letter">
-      <div><h2 class="case-title">::first-letter</h2><p class="case-expect">A large first letter styled by the pseudo-element. It must still apply to the first line block, and the lines must not move.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure first-letter" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="vertical">
+          <div><h3 class="case-title">Vertical writing mode</h3><p class="case-expect">writing-mode: vertical-rl. Lines are columns read right to left; the line blocks stack the same way.</p><p class="case-result"></p></div>
+          <div class="sample"><p lang="ja" class="body vertical" data-target>活字は黙っているものではありません。どの文字も、前の職人と言い争った手によって描かれ、彫られ、鋳造されました。ページが読まれるかどうかを決めるのは、文字のあいだの空間なのです。</p></div>
+        </section>
 
-    <section data-case="drop-cap">
-      <div><h2 class="case-title">Drop cap (floated ::first-letter)</h2><p class="case-expect">The first letter floats and the first lines wrap around it. The floated glyph is put in front of the first line block like any float, so no mask clips it and the reveal never moves it; the lines after it must still be shortened by it.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        </section>
 
-    <section data-case="drop-cap-words" data-unit="words">
-      <div><h2 class="case-title">Drop cap, split=words</h2><p class="case-expect">The first word is measured without its floated glyph, so the rest of the word keeps its painted width and the line does not shift.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-group="floats">
+          <h2 class="group-title">First letter, floats and columns</h2>
 
-    <section data-case="drop-cap-chars" data-unit="chars">
-      <div><h2 class="case-title">Drop cap, split=chars</h2><p class="case-expect">The glyph leaves its char unit to float in front of the first line block, and that unit goes with it; the graphemes after it keep their painted extents.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></div>
-    </section>
+        <section data-case="first-letter">
+          <div><h3 class="case-title">::first-letter</h3><p class="case-expect">A large first letter styled by the pseudo-element. It must still apply to the first line block, and the lines must not move.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure first-letter" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="first-line">
-      <div><h2 class="case-title">::first-line</h2><p class="case-expect">The first line is bold, uppercase and tracked. Its width is what it was, and the second line is plain.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure first-line" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="drop-cap">
+          <div><h3 class="case-title">Drop cap (floated ::first-letter)</h3><p class="case-expect">The first letter floats and the first lines wrap around it. The floated glyph is put in front of the first line block like any float, so no mask clips it and the reveal never moves it; the lines after it must still be shortened by it.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="text-indent">
-      <div><h2 class="case-title">text-indent</h2><p class="case-expect">Only the first line is indented. Every line is a block now, so the ones after the first must be told not to indent.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure indent" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="drop-cap-words" data-unit="words">
+          <div><h3 class="case-title">Drop cap, split=words</h3><p class="case-expect">The first word is measured without its floated glyph, so the rest of the word keeps its painted width and the line does not shift.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="float-left">
-      <div><h2 class="case-title">Float at the start</h2><p class="case-expect">A floated thumbnail before the text. It is not text, so it is not a unit and the reveal never moves it: it is put back in front of the first line block, which the lines after it are shortened by exactly as they were.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target><span class="thumb"></span>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. A second sentence so the copy runs past the float and back to the full measure.</p></div>
-    </section>
+        <section data-case="drop-cap-chars" data-unit="chars">
+          <div><h3 class="case-title">Drop cap, split=chars</h3><p class="case-expect">The glyph leaves its char unit to float in front of the first line block, and that unit goes with it; the graphemes after it keep their painted extents.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure drop-cap" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it.</p></div>
+        </section>
 
-    <section data-case="float-mid">
-      <div><h2 class="case-title">Float mid-paragraph, words</h2><p class="case-expect">A right float placed after the first sentence. It is put back in front of the line it floated beside, untouched by the reveal; the words around it split as painted.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Type is not a silent thing. <span class="thumb right"></span>Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. A second sentence so the copy runs past the float.</p></div>
-    </section>
+        <section data-case="first-line">
+          <div><h3 class="case-title">::first-line</h3><p class="case-expect">The first line is bold, uppercase and tracked. Its width is what it was, and the second line is plain.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure first-line" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <section data-case="columns">
-      <div><h2 class="case-title">Multi-column</h2><p class="case-expect">columns: 2. The last line of column one and the first of column two are different lines, though the second sits higher on the page.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body columns" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. A second sentence so both columns have several lines to fill.</p></div>
-    </section>
+        <section data-case="text-indent">
+          <div><h3 class="case-title">text-indent</h3><p class="case-expect">Only the first line is indented. Every line is a block now, so the ones after the first must be told not to indent.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure indent" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
 
-    <!-- Scale -->
+        <section data-case="float-left">
+          <div><h3 class="case-title">Float at the start</h3><p class="case-expect">A floated thumbnail before the text. It is not text, so it is not a unit and the reveal never moves it: it is put back in front of the first line block, which the lines after it are shortened by exactly as they were.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target><span class="thumb"></span>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. A second sentence so the copy runs past the float and back to the full measure.</p></div>
+        </section>
 
-    <section data-case="stress">
-      <div><h2 class="case-title">Stress: about 220 words</h2><p class="case-expect">One target, many lines. Watch the split cost in the panel.</p><p class="case-result"></p></div>
-      <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
-    </section>
+        <section data-case="float-mid">
+          <div><h3 class="case-title">Float mid-paragraph, words</h3><p class="case-expect">A right float placed after the first sentence. It is put back in front of the line it floated beside, untouched by the reveal; the words around it split as painted.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Type is not a silent thing. <span class="thumb right"></span>Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. A second sentence so the copy runs past the float.</p></div>
+        </section>
+
+        <section data-case="columns">
+          <div><h3 class="case-title">Multi-column</h3><p class="case-expect">columns: 2. The last line of column one and the first of column two are different lines, though the second sits higher on the page.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body columns" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. A second sentence so both columns have several lines to fill.</p></div>
+        </section>
+
+        </section>
+
+        <section data-group="scale">
+          <h2 class="group-title">Scale</h2>
+
+        <section data-case="stress">
+          <div><h3 class="case-title">Stress: about 220 words</h3><p class="case-expect">One target, many lines. Watch the split cost in the panel.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped. Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p></div>
+        </section>
+        </section>
+      </main>
+    </div>
 
     <script type="module" src="./demo.ts"></script>
   </body>

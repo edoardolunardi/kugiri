@@ -64,6 +64,18 @@ test("a replay reverts and splits again to the same result", async ({ page, brow
   await expectEveryCaseAsPainted(page, browserName);
 });
 
+test("the boxes are drawn inside the units and move nothing", async ({ page, browserName }) => {
+  await page.goto("/");
+  await revealEverything(page);
+
+  for (const level of ["lines", "words", "chars", "masks"]) {
+    await page.locator(`[data-box=${level}]`).click();
+  }
+
+  await expect(page.locator("html")).toHaveAttribute("data-boxes", "lines words chars masks");
+  await expectEveryCaseAsPainted(page, browserName);
+});
+
 test("a split leaves no empty link behind", async ({ page }) => {
   await page.goto("/");
   await revealEverything(page);

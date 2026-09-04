@@ -12,7 +12,7 @@ suite. This file is the one place agents read instructions from; the skills unde
 | `src/index.ts`         | The library. Built by `tsc` into `dist/`, which is what npm ships.                         |
 | `demo/index.html`      | Every behaviour as a case: one `<section data-case>` per situation running text can be in. |
 | `demo/demo.ts`         | The harness: splits each case as it scrolls into view and checks it against the paint.     |
-| `demo/demo.css`        | The demo's styles, including the classes cases rely on (`measure`, `narrow`, `drop-cap`).  |
+| `demo/demo.css`        | The demo's styles: the classes cases rely on (`measure`, `narrow`, `drop-cap`), the boxes. |
 | `tests/demo.spec.ts`   | Playwright: opens the demo, reveals everything, asserts every case's check reads ok.       |
 | `scripts/release.mjs`  | The release, in one command, up to the tag push. `size.mjs` and `notes.mjs` serve it.      |
 | `.github/workflows/`   | `pages.yml` publishes the demo on every push to main; `release.yml` publishes a tag to npm. |

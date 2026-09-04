@@ -5,8 +5,11 @@ description: Inspect what the split actually produced in a real browser: markup,
 
 # Probe a split in a browser
 
-The suite says pass or fail. To see why, or to verify geometry the suite does not assert, run a
-throwaway Playwright spec against the demo page. The demo exposes its harness on the window:
+The suite says pass or fail. For a first look, open the demo (`npm run dev`) and turn on the
+**Boxes** toggles in the panel: an outline around every line, word, character and mask shows what
+the split produced and where it stops matching the paint. To see why, or to verify geometry the
+suite does not assert, run a throwaway Playwright spec against the demo page. The demo exposes its
+harness on the window:
 
 ```ts
 window.kugiriDemo = { demo, paintedLines, splitText };
