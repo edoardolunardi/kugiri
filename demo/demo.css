@@ -232,12 +232,49 @@ header pre {
   text-underline-offset: 3px;
 }
 
+/* Sites built on the split, above the footer and outside the grid like it. */
+.showcase {
+  display: grid;
+  gap: 16px;
+  margin-top: 56px;
+  padding-top: 40px;
+  border-top: 1px solid var(--rule);
+}
+
+.showcase p {
+  max-width: 64ch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.showcase a {
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+}
+
+.sites {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.sites a {
+  color: var(--ink);
+}
+
 .foot {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px 32px;
-  margin-top: 56px;
+  margin-top: 40px;
   padding: 24px 0;
   border-top: 1px solid var(--rule);
   font-size: 14px;
@@ -252,6 +289,7 @@ header pre {
 @media (hover: hover) {
   .links a:hover,
   .credit a:hover,
+  .showcase a:hover,
   .foot a:hover {
     text-decoration-color: currentColor;
   }

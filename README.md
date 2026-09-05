@@ -225,6 +225,17 @@ consumer has to; its header shows the code for both, and for the same reveal in 
 that are not part of the library.
 `npm test` runs the same check headless in Chromium, WebKit and Firefox.
 
+## Showcase
+
+Sites that split their text with kugiri:
+
+- [Ascension](https://ascension.pegassi.be/)
+- [House of Honey](https://www.houseofhoney.com/)
+- [The Content Architecture](https://www.contentarchitecture.dev/)
+- [Aspen Search](https://www.aspensearch.com/)
+
+Built something with it? Open a pull request and add it here.
+
 ## Development
 
 ```sh
