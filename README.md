@@ -1,10 +1,10 @@
-# kugiri
+# kugiri (区切り)
 
 Splits text into lines, words and characters exactly where the browser already broke it.
 
 **Demo:** <https://edoardolunardi.github.io/kugiri/>
 
-区切り (kugiri) is the point where one segment ends and the next begins. That is what this
+kugiri (区切り) is the point where one segment ends and the next begins. That is what this
 library finds: the line boxes the browser painted, the words and graphemes inside them, and nothing
 else. It cuts the DOM at those points and marks every unit so you can animate it, in CSS or in
 script. It never decides where a line should break; the browser did that already.

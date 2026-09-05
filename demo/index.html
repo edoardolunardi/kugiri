@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>kugiri demo</title>
+    <title>kugiri (区切り) demo</title>
     <link rel="preload" href="./fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./demo.css" />
@@ -14,8 +14,14 @@
     <div class="page">
       <header>
         <div class="masthead">
-          <h1 data-target>kugiri</h1>
+          <h1 data-target>kugiri <span class="ja" lang="ja">(区切り)</span></h1>
           <p class="lede" data-target>Splits text into lines, words and characters exactly where the browser already broke it.</p>
+          <p data-target>
+            kugiri <span lang="ja">(区切り)</span> is the point where one segment ends and the next begins. That is what
+            this library finds: the line boxes the browser painted, the words and graphemes inside them, and nothing
+            else. It cuts the DOM at those points and marks every unit so you can animate it, in CSS or in script. It
+            never decides where a line should break; the browser did that already.
+          </p>
           <p data-target>
             Every case below is one piece of text in a situation running text can be in: a drop cap, a link that wraps,
             a float, a second script. Each one splits and reveals as it scrolls into view.
@@ -33,7 +39,7 @@
 
         <div class="examples">
           <p data-target>
-            kugiri is a split engine and nothing more. It writes the units and stops: no animation, no watching the
+            kugiri <span lang="ja">(区切り)</span> is a split engine and nothing more. It writes the units and stops: no animation, no watching the
             viewport, the fonts or the text. Both belong to the code that calls it, in whatever library it likes. The
             snippets below are not part of the library and do not ship with it. They are this page's own code, shown as
             one way to do each, in plain browser APIs and in plain CSS.
@@ -456,7 +462,7 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
 
     <!-- Outside the page grid: a sticky sidebar travels the whole grid, and would reach down over the footer. -->
     <footer class="foot">
-      <p>kugiri is made by <a href="https://www.edoardolunardi.dev/" target="_blank" rel="noopener">Edoardo Lunardi</a> and released under the MIT license.</p>
+      <p>kugiri <span lang="ja">(区切り)</span> is made by <a href="https://www.edoardolunardi.dev/" target="_blank" rel="noopener">Edoardo Lunardi</a> and released under the MIT license.</p>
       <ul class="links">
         <li><a href="https://www.npmjs.com/package/kugiri">npm</a></li>
         <li><a href="https://github.com/edoardolunardi/kugiri">GitHub</a></li>

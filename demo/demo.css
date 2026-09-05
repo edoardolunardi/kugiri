@@ -157,6 +157,12 @@ header h1 {
   text-wrap: balance;
 }
 
+/* The name in Japanese beside the title, in the tone of the copy under it. */
+header h1 .ja {
+  font-weight: 400;
+  color: var(--muted);
+}
+
 header p {
   margin: 0;
   line-height: 1.5;
