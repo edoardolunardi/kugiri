@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `splitText` takes an array, or any iterable, of targets and returns one `TextSplit` per
+  target. Every target is planned before any is written, so a page of blocks costs the one
+  layout a single block does, where a loop of single splits forced one per block: a word or
+  character split of an article takes about a third less time, most of all in Safari. The
+  hyphen a broken word is restated with is now measured once every cut is made, for the same
+  reason, in a single split as well.
+
 ## [0.3.0] - 2026-09-04
 
 ### Added

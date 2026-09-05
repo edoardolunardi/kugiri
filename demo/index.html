@@ -26,7 +26,7 @@
             Every case below is one piece of text in a situation running text can be in: a drop cap, a link that wraps,
             a float, a second script. Each one splits and reveals as it scrolls into view.
           </p>
-          <p data-target>One ES module, about 6.9 kB minified and gzipped, with no dependencies.</p>
+          <p data-target>One ES module, about 7.0 kB minified and gzipped, with no dependencies.</p>
           <p class="install"><code>npm install kugiri</code></p>
           <ul class="links">
             <li><a href="https://www.npmjs.com/package/kugiri">npm</a></li>
@@ -443,6 +443,15 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
 
         <section data-group="scale">
           <h2 class="group-title">Scale</h2>
+
+        <section data-case="batch" data-batch data-unit="words">
+          <div><h3 class="case-title">Batch: three targets, one call</h3><p class="case-expect">Three paragraphs passed to one call as an array. All three are planned before any is written, so together they cost the one layout a single paragraph does, and the hyphen the middle one breaks on is restated once every cut is made. Each must still split exactly as painted.</p><p class="case-result"></p></div>
+          <div class="sample">
+            <p class="body measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p>
+            <p lang="en" class="body narrow hyphens" data-target>Typographical characterisation of letterform irregularities demands extraordinarily conscientious punchcutters.</p>
+            <p class="body measure" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters, not any single glyph, that decides whether a page is read or skipped.</p>
+          </div>
+        </section>
 
         <section data-case="stress">
           <div><h3 class="case-title">Stress: about 220 words</h3><p class="case-expect">One target, many lines. Watch the split cost in the panel.</p><p class="case-result"></p></div>

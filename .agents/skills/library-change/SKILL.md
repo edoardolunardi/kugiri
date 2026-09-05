@@ -25,8 +25,8 @@ and `getClientRects` belongs in `planContainer` and `planRun`, on a layout nothi
 plan they produce (`Item`, `RunPlan`, `Segment`, `Boundary`) carries everything the write phase
 needs. `writeItems`, `cutRun`, `wrapTextWords`, `restateFirstLetter` and `mark` only write.
 
-If a change needs a read after a write, say so in a comment the way `cutRun` does for the hyphen,
-and make it a single read at the end, not one per unit.
+If a change needs a read after a write, say so in a comment the way `splitText` does for the
+hyphens, and make it a single read at the end, after every target's writes, not one per unit.
 
 ## 3. Respect what a unit is
 

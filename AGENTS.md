@@ -37,8 +37,9 @@ npm run release -- patch|minor|major   # see .agents/skills/release
 - **Two phases, never interleaved.** Every layout and style read happens first, against a layout
   that is still clean; every DOM write happens after. A read between writes forces a reflow and is
   a regression even when the output is right. `planContainer` and `planRun` read; `writeItems`,
-  `cutRun` and the restatements write. The one exception is documented in `cutRun`: measuring a
-  hyphen after the cut.
+  `cutRun` and the restatements write. The one exception is documented in `splitText`: measuring
+  the hyphens once every cut is made. An array of targets is planned whole before any is written,
+  so the two phases hold across a page, not only inside one target.
 - **The browser decides where lines break.** Lines are read off the text with
   `Range.getClientRects()` and cut with `Range.extractContents()`. Nothing about the layout may
   change before it is measured, and nothing the split writes may move a wrap: word and char units

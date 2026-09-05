@@ -476,6 +476,10 @@ function describe(reveal: Reveal): string[] {
     tags.push("css reveal");
   }
 
+  if (reveal.section.hasAttribute("data-batch")) {
+    tags.push("batch");
+  }
+
   return tags;
 }
 
@@ -502,12 +506,10 @@ class Demo {
     this.observer = new IntersectionObserver(this.onIntersect, { rootMargin: "0px 0px -10% 0px" });
 
     for (const section of document.querySelectorAll<HTMLElement>("section[data-case]")) {
-      const target = section.querySelector<HTMLElement>("[data-target]");
-
-      if (!target) {
-        continue;
-      }
-
+      // A batch case splits every target it holds in one call; any other case has one target.
+      const targets = section.hasAttribute("data-batch")
+        ? Array.from(section.querySelectorAll<HTMLElement>("[data-target]"))
+        : [section.querySelector<HTMLElement>("[data-target]")].filter((target) => target !== null);
       const mask = section.dataset.mask;
       const levels =
         mask === "none"
@@ -517,18 +519,20 @@ class Demo {
             : [isLevel(section.dataset.unit) ? section.dataset.unit : "lines"];
       const reach = section.dataset.maskReach;
 
-      this.reveals.push({
-        target,
-        section,
-        unit: isLevel(section.dataset.unit) ? section.dataset.unit : "lines",
-        mask: levels,
-        reach,
-        ignore: section.dataset.ignore,
-        css: section.dataset.reveal === "css",
-        stagger: undefined,
-        split: null,
-        expected: { lines: [], ends: [], height: 0 },
-      });
+      for (const target of targets) {
+        this.reveals.push({
+          target,
+          section,
+          unit: isLevel(section.dataset.unit) ? section.dataset.unit : "lines",
+          mask: levels,
+          reach,
+          ignore: section.dataset.ignore,
+          css: section.dataset.reveal === "css",
+          stagger: undefined,
+          split: null,
+          expected: { lines: [], ends: [], height: 0 },
+        });
+      }
     }
 
     // The header's copy splits too, so the effect is on the page before any case is. The snippets
@@ -556,7 +560,7 @@ class Demo {
     }).observe({ entryTypes: ["longtask"] });
 
     // Every case gets its id, a permalink and its tags; every group gets its entry in the contents.
-    for (const reveal of this.reveals) {
+    for (const reveal of this.cases()) {
       const id = reveal.section.dataset.case ?? "";
       const meta = document.createElement("p");
       const permalink = document.createElement("a");
@@ -592,7 +596,7 @@ class Demo {
       link.textContent = group.querySelector("h2")?.textContent ?? group.id;
       list.className = "toc-cases";
 
-      for (const reveal of this.reveals) {
+      for (const reveal of this.cases()) {
         if (!group.contains(reveal.section)) {
           continue;
         }
@@ -687,6 +691,11 @@ class Demo {
         continue;
       }
 
+      // A batch case splits and plays whole when the first of its targets comes into view.
+      if (reveal.split && reveal.target.hasAttribute("data-revealed")) {
+        continue;
+      }
+
       // Header targets that come into view together play as one cascade per column, in document
       // order, each picking up where the last one's lines end.
       if (this.intros.includes(reveal)) {
@@ -699,13 +708,53 @@ class Demo {
     }
   };
 
-  /** Splits and reveals one target, its units staggered from `offset` units in; returns how many units it has. */
+  /** One reveal per case: the first of a batch stands for the case where it is described or listed. */
+  cases(): Reveal[] {
+    return this.reveals.filter((reveal, index, all) => all.findIndex((other) => other.section === reveal.section) === index);
+  }
+
+  /**
+   * Splits and reveals a target, its units staggered from `offset` units in; returns how many
+   * units it has. A batch case passes all its targets to one call and reveals them together, as
+   * one page would; any other case splits its one target on its own, so both forms of the call are
+   * exercised.
+   */
   play(reveal: Reveal, offset = 0): number {
+    const batch = reveal.section.hasAttribute("data-batch");
+    const group = batch ? this.reveals.filter((other) => other.section === reveal.section) : [reveal];
+    const options = { type: [reveal.unit], mask: maskOption(reveal), ignore: reveal.ignore };
     const start = performance.now();
 
-    reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: maskOption(reveal), ignore: reveal.ignore });
+    if (batch) {
+      const splits = splitText(
+        group.map((other) => other.target),
+        options
+      );
+
+      group.forEach((other, index) => {
+        other.split = splits[index];
+      });
+    } else {
+      reveal.split = splitText(reveal.target, options);
+    }
+
     this.splitTimes.push(performance.now() - start);
     this.render();
+
+    let units = 0;
+
+    for (const other of group) {
+      units = Math.max(units, this.animate(other, offset));
+    }
+
+    return units;
+  }
+
+  /** Reveals one split target, its units staggered from `offset` units in; returns how many units it has. */
+  animate(reveal: Reveal, offset: number): number {
+    if (!reveal.split) {
+      return 0;
+    }
 
     if (reveal.css) {
       reveal.target.setAttribute("data-revealed", "");
@@ -773,39 +822,50 @@ class Demo {
 
   /** Every target on screen has split by now; one that has not is reported as such rather than judged. */
   check = () => {
-    let mismatches = 0;
+    const rank = { ok: 0, pending: 1, mismatch: 2 };
+    const cases = new Map<HTMLElement, { status: keyof typeof rank; verdict: string; lines: number }>();
 
     for (const reveal of this.reveals) {
-      const result = reveal.section.querySelector<HTMLElement>(".case-result");
       const actual = reveal.split ? reveal.split.lines.map((line) => collapse(lineText(line))).filter(Boolean) : [];
       const geometry = reveal.split ? keepsGeometry(reveal.expected, reveal.target, reveal.split.lines) : null;
-      let status = "ok";
-      let verdict: string;
+      let status: keyof typeof rank = "ok";
+      let verdict = "";
 
       if (!reveal.split) {
         status = "pending";
         verdict = "not split yet";
       } else if (!coversPainted(reveal.expected.lines, actual)) {
-        mismatches += 1;
         status = "mismatch";
         verdict = `painted ${reveal.expected.lines.length} lines, split ${actual.length}\n${reveal.expected.lines.join(" | ")}\nvs\n${actual.join(" | ")}`;
       } else if (geometry) {
-        mismatches += 1;
         status = "mismatch";
         verdict = `${actual.length} lines as painted, but ${geometry}`;
-      } else {
-        verdict = `${actual.length} lines, as painted, nothing moved`;
       }
 
-      reveal.section.dataset.status = status;
+      // A batch case is as good as its worst target, and its lines are all of theirs.
+      const current = cases.get(reveal.section);
 
-      if (result) {
-        result.textContent = verdict;
+      if (!current || rank[status] > rank[current.status]) {
+        cases.set(reveal.section, { status, verdict, lines: (current?.lines ?? 0) + actual.length });
+      } else {
+        current.lines += actual.length;
       }
     }
 
-    const pending = this.reveals.filter((reveal) => !reveal.split).length;
-    const checked = this.reveals.length - pending;
+    for (const [section, { status, verdict, lines }] of cases) {
+      const result = section.querySelector<HTMLElement>(".case-result");
+
+      section.dataset.status = status;
+
+      if (result) {
+        result.textContent = status === "ok" ? `${lines} lines, as painted, nothing moved` : verdict;
+      }
+    }
+
+    const verdicts = Array.from(cases.values());
+    const mismatches = verdicts.filter((entry) => entry.status === "mismatch").length;
+    const pending = verdicts.filter((entry) => entry.status === "pending").length;
+    const checked = cases.size - pending;
     const parts: string[] = [];
 
     if (checked === 0) {
@@ -824,11 +884,12 @@ class Demo {
     this.render();
   };
 
-  /** Everything reverts, the painted lines are read again (a resize may have moved them) once the fonts are in, and every target waits for the viewport again. */
   /**
    * Every split reverts and is made again for the new layout, its units at rest: the reveal does
    * not play a second time. A target still waiting for the viewport only has its painted lines read
-   * again. All reverts come first and all reads next, so no read lands between writes.
+   * again. All reverts come first and all reads next, and the targets that share their options are
+   * passed to one call each, so no read lands between writes and the page costs a few layouts, not
+   * one per target.
    */
   resplit = () => {
     this.verdict.textContent = "";
@@ -859,21 +920,34 @@ class Demo {
       reveal.expected = paintedLines(reveal.target, reveal.target, reveal.ignore);
     }
 
+    const groups = new Map<string, Reveal[]>();
+
     for (const reveal of [...this.reveals, ...this.intros]) {
-      if (!reveal.split) {
-        continue;
-      }
+      if (reveal.split) {
+        const key = JSON.stringify([reveal.unit, maskOption(reveal), reveal.ignore]);
 
+        groups.set(key, [...(groups.get(key) ?? []), reveal]);
+      }
+    }
+
+    for (const group of groups.values()) {
       const start = performance.now();
+      const splits = splitText(
+        group.map((reveal) => reveal.target),
+        { type: [group[0].unit], mask: maskOption(group[0]), ignore: group[0].ignore }
+      );
 
-      reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: maskOption(reveal), ignore: reveal.ignore });
       this.splitTimes.push(performance.now() - start);
-      reveal.target.setAttribute("data-revealed", "settled");
 
-      // Nothing is on its way up, so the clip the split put on every mask goes at once.
-      for (const mask of reveal.split.masks) {
-        mask.style.clipPath = "none";
-      }
+      group.forEach((reveal, index) => {
+        reveal.split = splits[index];
+        reveal.target.setAttribute("data-revealed", "settled");
+
+        // Nothing is on its way up, so the clip the split put on every mask goes at once.
+        for (const mask of splits[index].masks) {
+          mask.style.clipPath = "none";
+        }
+      });
     }
 
     this.render();

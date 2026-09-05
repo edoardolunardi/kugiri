@@ -25,9 +25,10 @@ script. It never decides where a line should break; the browser did that already
   Web Animations API, GSAP, Motion, or a stylesheet. A split is a snapshot of one layout: nothing
   watches the viewport or splits again on its own, and [that part is yours](#a-split-is-a-snapshot).
 - **Cheap.** One read phase, one write phase, no forced reflow. A 2,000-word article splits into
-  lines in about 10ms on a laptop.
-- **Small.** One file, ES2022, no dependencies. About 6.9 kB minified and gzipped (18.9 kB
-  minified, 6.3 kB with brotli).
+  lines in about 10ms on a laptop, and an array of targets is planned whole before any is written,
+  so a page of blocks costs the one layout a single block does.
+- **Small.** One file, ES2022, no dependencies. About 7.0 kB minified and gzipped (19.3 kB
+  minified, 6.4 kB with brotli).
 
 ## Install
 
@@ -144,6 +145,18 @@ Splits `target` in place and returns a `TextSplit`.
 | `mask`    | `SplitLevel \| SplitLevel[] \| MaskReach` | none        | The units that get a clipping wrapper (`clip-path: inset(0)`, set inline) to slide out from under. Any levels, whatever the unit you animate. As an object, each level names how far its clip reaches past the box across the line (`{ lines: ".25em" }`), for the descenders and accents a tight leading leaves outside the line box. The clip stays until you clear it. |
 | `ignore`  | `string`                                  | none        | A selector for elements to leave whole: never cut into, never wrapped, never a unit.                                    |
 | `classes` | `{ lines?, words?, chars?, mask? }`       | none        | Class names to add to the units and masks, on top of the data attributes they always carry.                             |
+
+### `splitText(targets, options?)`
+
+Given an array, or any iterable of elements such as a `NodeList`, splits every target with the same
+options and returns one `TextSplit` per distinct target, in the same order. Every target is planned
+before any is written, so the whole page costs the one layout a single target does. A loop of
+single splits forces one layout per target instead, since each split's reads land on the layout the
+one before it changed; in a word or character split of an article that is a third of the time.
+
+```ts
+const splits = splitText(document.querySelectorAll("article p"), { type: ["words"] });
+```
 
 ### `TextSplit`
 

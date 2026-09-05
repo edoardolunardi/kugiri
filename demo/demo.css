@@ -998,6 +998,11 @@ details summary {
   margin: 8px 0 0;
 }
 
+/* A batch case holds several targets; they keep a paragraph's distance. */
+[data-batch] .sample > p + p {
+  margin-top: 12px;
+}
+
 ruby rt {
   font-size: 0.55em;
   color: var(--muted);

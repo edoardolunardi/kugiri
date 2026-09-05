@@ -9,6 +9,8 @@
 //
 // Two phases, never interleaved: every layout and style read happens first, against a layout that
 // is still clean, and every DOM write after, so a split of a whole article forces no reflow at all.
+// Several targets passed together are planned whole before any is written, so a page of blocks
+// costs the one layout a single block does, where a loop of splits would force one per block.
 //
 // The split only structures and marks: every unit carries `data-line`, `data-word` or `data-char`
 // with its index, the same index as a custom property (`--line`, `--word`, `--char`) for a CSS
@@ -146,6 +148,8 @@ type Context = {
   firstLetters: { line: HTMLElement; firstLetter: FirstLetter }[];
   /** First lines restating a `::first-line`, verified against the painted row once every style is written. */
   firstLines: { line: HTMLElement; declarations: string; end: number; along: (rect: DOMRect) => Span }[];
+  /** Words a break hyphenated, each measured once every cut of every target is made. */
+  hyphens: { pending: PendingHyphen; run: RunPlan }[];
 };
 
 /** Rects closer than this on the block axis sit on the same line; a raised superscript is well within it. */
@@ -1067,7 +1071,9 @@ function hyphenGlyph(width: number, context: Context) {
  * A fragment a break left at the end of a line, measured once the cut has made it the line's end:
  * the room it reached before, less its natural width now, is the hyphen the browser had drawn.
  */
-function restateHyphen(pending: PendingHyphen, lines: HTMLElement[], along: (rect: DOMRect) => Span, context: Context) {
+function restateHyphen(pending: PendingHyphen, run: RunPlan, context: Context) {
+  const { along } = run;
+
   // A fragment unit already has the row's whole extent as its box; the hyphen fills what the text
   // leaves of it.
   if (pending.unit) {
@@ -1094,7 +1100,7 @@ function restateHyphen(pending: PendingHyphen, lines: HTMLElement[], along: (rec
   }
 
   // A lines-only cut: the fragment is the run of text that ends its line.
-  const line = lines[pending.line];
+  const line = run.sink.lines[pending.line];
   const walker = line ? document.createTreeWalker(line, NodeFilter.SHOW_TEXT) : null;
   let tail: Text | null = null;
 
@@ -1435,10 +1441,9 @@ function cutRun(run: RunPlan, context: Context) {
     container.insertBefore(node, outer);
   }
 
-  // The one read a cut allows itself, and only where a word was broken: the fragments no longer
-  // break, so what each one lost against the room it had is the hyphen the browser drew.
+  // A hyphen is measured, not written, so it waits until every target's cuts are made (see `splitText`).
   for (const entry of pending) {
-    restateHyphen(entry, sink.lines, run.along, context);
+    context.hyphens.push({ pending: entry, run });
   }
 
   if (run.firstLetter && sink.lines[0]) {
@@ -1663,10 +1668,11 @@ function mark(split: TextSplit, options: SplitOptions, context: Context) {
   context.target.setAttribute("data-split", levels.filter((level) => split[level].length > 0).join(" "));
 }
 
-/** Splits `target` into painted lines, and words and graphemes inside them, in document order. */
-export function splitText(target: HTMLElement, options: SplitOptions = {}): TextSplit {
-  splits.get(target)?.revert();
+/** A target between its plan and its writes: what the read phase produced, waiting for the write phase. */
+type Job = { split: TextSplit; context: Context; items: Item[] };
 
+/** The read phase for one target: its options resolved, its layout read, nothing written yet. */
+function planTarget(target: HTMLElement, options: SplitOptions): Job {
   const original = target.innerHTML;
   const originalMarker = target.getAttribute("data-split");
   const levels = new Set(options.type ?? ["lines"]);
@@ -1712,24 +1718,61 @@ export function splitText(target: HTMLElement, options: SplitOptions = {}): Text
     originals: new Set(target.querySelectorAll("*")),
     firstLetters: [],
     firstLines: [],
+    hyphens: [],
   };
 
-  const items = planContainer(target, context);
+  return { split, context, items: planContainer(target, context) };
+}
 
-  writeItems(items, split, context);
+/** Splits `target` into painted lines, and words and graphemes inside them, in document order. */
+export function splitText(target: HTMLElement, options?: SplitOptions): TextSplit;
+/**
+ * Splits every target, in one pass: all are planned before any is written, so a page of blocks
+ * costs the one layout a single block does. A loop of single splits would force one per block,
+ * since each one's reads land on the layout the one before it dirtied.
+ */
+export function splitText(targets: Iterable<HTMLElement>, options?: SplitOptions): TextSplit[];
+export function splitText(target: HTMLElement | Iterable<HTMLElement>, options: SplitOptions = {}): TextSplit | TextSplit[] {
+  // A target named twice is planned once: a second plan of the same element would read a layout
+  // the first one's writes are about to change.
+  const targets = target instanceof HTMLElement ? [target] : Array.from(new Set(target));
 
-  // Before the marks, since a floated glyph leaves the units and the rest are numbered without it.
-  for (const { line, firstLetter } of context.firstLetters) {
-    restateFirstLetter(line, firstLetter, split, context);
+  // A revert is a write, so every target split before goes back before the first read.
+  for (const el of targets) {
+    splits.get(el)?.revert();
   }
 
-  mark(split, options, context);
+  const jobs = targets.map((el) => planTarget(el, options));
 
-  for (const entry of context.firstLines) {
-    settleFirstLine(entry);
+  for (const job of jobs) {
+    writeItems(job.items, job.split, job.context);
   }
 
-  splits.set(target, split);
+  // The one read the write phase allows itself, once for every target together and only where a
+  // word was broken: the fragments no longer break, so what each one lost against the room it had
+  // is the hyphen the browser drew.
+  for (const job of jobs) {
+    for (const { pending, run } of job.context.hyphens) {
+      restateHyphen(pending, run, job.context);
+    }
+  }
 
-  return split;
+  for (const job of jobs) {
+    // Before the marks, since a floated glyph leaves the units and the rest are numbered without it.
+    for (const { line, firstLetter } of job.context.firstLetters) {
+      restateFirstLetter(line, firstLetter, job.split, job.context);
+    }
+
+    mark(job.split, options, job.context);
+  }
+
+  for (const job of jobs) {
+    for (const entry of job.context.firstLines) {
+      settleFirstLine(entry);
+    }
+
+    splits.set(job.context.target, job.split);
+  }
+
+  return target instanceof HTMLElement ? jobs[0].split : jobs.map((job) => job.split);
 }
