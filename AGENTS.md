@@ -15,7 +15,9 @@ suite. This file is the one place agents read instructions from; the skills unde
 | `demo/demo.css`        | The demo's styles: the classes cases rely on (`measure`, `narrow`, `drop-cap`), the masks. |
 | `tests/demo.spec.ts`   | Playwright: opens the demo, reveals everything, asserts every case's check reads ok.       |
 | `scripts/release.mjs`  | The release, in one command, up to the tag push. `size.mjs` and `notes.mjs` serve it.      |
-| `.github/workflows/`   | `pages.yml` publishes the demo on every push to main; `release.yml` publishes a tag to npm. |
+| `.github/workflows/`   | `pull-request.yml` and `pull-request-description.yml` check every pull request; `pages.yml` publishes the demo on every push to main; `release.yml` publishes a tag to npm. |
+| `.github/ISSUE_TEMPLATE/` | The forms an issue is opened with: a bug report asking for the markup, the CSS, the call and the browser; a feature request. Blank issues are off. |
+| `.github/PULL_REQUEST_TEMPLATE.md` | The sections every pull request description must have. `scripts/pull-request.mjs` checks a description against it. |
 | `.agents/skills/`      | Procedures: adding a case, probing a split in a browser, changing the library, releasing.  |
 
 ## Commands
@@ -73,6 +75,10 @@ npm run release -- patch|minor|major   # see .agents/skills/release
   before the body. The body explains why, not what. No attribution lines, no tool names, no
   co-author trailers.
 - **Do not commit or push unless asked**, and ask again for each commit or push.
+- **Pull requests** follow `.github/PULL_REQUEST_TEMPLATE.md`: why, what changed, the case that shows
+  it, and a ticked checklist. The Pull request workflow rejects a description that strays from it, a
+  title or commit that is not Conventional Commits, and a failing check or suite, and main requires
+  all four to pass before a merge.
 - **Prose** (docs, comments, commit messages, demo copy) uses plain sentences. No em dashes or en
   dashes: use a period, a comma, a colon or parentheses instead. Hyphens in compound words are fine.
 - **Formatting** is Biome's, run by the pre-commit hook on staged files. TypeScript is strict.

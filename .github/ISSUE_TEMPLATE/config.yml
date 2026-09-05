@@ -1,0 +1,13 @@
+# Every issue goes through a form below. Blank issues are off: a report without the markup, the
+# CSS and the browser cannot be reproduced, and the forms ask for exactly those.
+blank_issues_enabled: false
+contact_links:
+  - name: Try your case on the demo first
+    url: https://edoardolunardi.github.io/kugiri/
+    about: Fifty situations running text can be in, each split and checked against the paint. If yours is among them, the report can point at it.
+  - name: What a unit is
+    url: https://github.com/edoardolunardi/kugiri#what-a-unit-is
+    about: The contract. An inline piece that is not text rides along whole, a block-level piece is never a unit, a float is put back. Check it before reporting one of those as a bug.
+  - name: Add your site to the showcase
+    url: https://github.com/edoardolunardi/kugiri/blob/main/README.md#showcase
+    about: Built something with kugiri? Open a pull request that adds it to the README and the demo, not an issue.

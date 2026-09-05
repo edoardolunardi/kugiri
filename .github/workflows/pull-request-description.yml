@@ -1,0 +1,31 @@
+# Checks a pull request's description against .github/PULL_REQUEST_TEMPLATE.md, at every push and
+# every edit. This is its own workflow on pull_request_target so that the template and the checker
+# come from main, not from the pull request: a workflow on pull_request runs the branch's copy of
+# both, which a contributor could edit into passing. Nothing from the branch runs here, and the
+# description reaches the checker through the environment, never through the shell.
+
+name: Pull request description
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pull-request-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  description:
+    name: Description follows the template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s\n' "$BODY" | node scripts/pull-request.mjs -

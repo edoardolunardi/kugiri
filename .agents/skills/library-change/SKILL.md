@@ -73,3 +73,8 @@ one engine is not verified.
 
 Conventional Commits, header at most 72 characters, body explaining why. The hooks lint staged
 files and the message. Do not commit or push unless asked.
+
+A pull request follows `.github/PULL_REQUEST_TEMPLATE.md`, section by section, with every box of the
+checklist ticked. The Pull request workflow checks the description against the template and fails
+on a missing or empty section, a placeholder or an unticked box; run the same check by hand with
+`node scripts/pull-request.mjs body.md`.

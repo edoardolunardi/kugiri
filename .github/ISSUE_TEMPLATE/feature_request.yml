@@ -1,0 +1,45 @@
+name: Feature request
+description: A situation running text can be in that the split does not handle, or an option it lacks.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        kugiri structures and marks, and nothing else: no animation, no watching the viewport, no
+        opinions. A request that fits is a situation text can be in that the split gets wrong or
+        cannot express, or a hook the units should carry. A request for an effect belongs in the code
+        that calls it, in whatever library it likes.
+
+  - type: textarea
+    id: situation
+    attributes:
+      label: The situation
+      description: The text, the layout it is in, and what the split does with it today. Markup and CSS help, as does the nearest demo case.
+    validations:
+      required: true
+
+  - type: textarea
+    id: wanted
+    attributes:
+      label: What the split should produce
+      description: The units, the attributes or the option you would want, and how you would use them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fit
+    attributes:
+      label: Why it belongs in the library
+      description: Why the code that calls the split cannot do it from what the units already carry, and what it costs (the README states the built size).
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before requesting
+      options:
+        - label: It is a change to what the split produces or marks, not an animation or a way of watching the page.
+          required: true
+        - label: I searched the open and closed issues.
+          required: true

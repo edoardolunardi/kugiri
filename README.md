@@ -255,6 +255,13 @@ pushes; the tag then runs a workflow that publishes to npm through trusted publi
 the GitHub release. Try it with `--dry-run` first. Instructions for agents live in `AGENTS.md`
 and `.agents/skills/`.
 
+A pull request follows the template in `.github/PULL_REQUEST_TEMPLATE.md`: why, what changed, the
+demo case that shows it, and a checklist. A workflow checks the description against the template,
+the title and the commits against Conventional Commits, and runs the types, the lint and the suite
+in the three browsers; main requires all of them before a merge.
+An issue is opened through one of the forms in `.github/ISSUE_TEMPLATE/`, which ask for what a
+report needs to be reproduced: the markup, the CSS that governs its wrapping, the call and the browser.
+
 ## License
 
 MIT
