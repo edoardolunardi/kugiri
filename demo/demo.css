@@ -46,10 +46,7 @@
   --ok: #1a7f4b;
   --fail: #b42318;
 
-  /* One hue per level of boxes, none of them the accent, which marks what can be clicked. */
-  --box-line: #2563eb;
-  --box-word: #0e7490;
-  --box-char: #b45309;
+  /* The hue of a mask's outline, not the accent, which marks what can be clicked. */
   --box-mask: #be185d;
 
   /* A ring in place of a border, so a control lifts off the paper without a hard edge. */
@@ -528,7 +525,7 @@ section[data-status="mismatch"] .case-result::before {
   line-height: 1.5;
 }
 
-/* In the sidebar the panel is a menu: one button per row, the two actions stacked, the boxes two by two. */
+/* In the sidebar the panel is a menu: one button per row. */
 @media (min-width: 1025px) {
   .panel {
     position: static;
@@ -540,40 +537,16 @@ section[data-status="mismatch"] .case-result::before {
   }
 }
 
-.actions,
-.boxes-list {
+.actions {
   display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-.actions {
-  grid-template-columns: 1fr 1fr;
-}
-
-.boxes {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.boxes legend {
-  padding: 0;
-  margin-bottom: 6px;
-}
-
-.boxes-list {
-  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-}
-
-/* After the rules above, so the sidebar's columns win: the actions stacked, the boxes two by two. */
+/* After the rule above, so the sidebar's column wins. */
 @media (min-width: 1025px) {
   .actions {
     grid-template-columns: 1fr;
-  }
-
-  .boxes-list {
-    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -1018,36 +991,14 @@ ruby rt {
 }
 
 /*
- * The boxes: a hairline inside every unit or mask of a level the panel asks for. An outline has no
- * size and no place in the layout, so nothing it marks can move, and drawn inside the box a mask's
- * clip never cuts it off. The mask's ring sits one pixel further in, so both show when both are on.
+ * The masks: a hairline inside every mask when the panel asks for it, which shows every unit the
+ * split made, since a mask wraps one. An outline has no size and no place in the layout, so nothing
+ * it marks can move, and drawn inside the box the mask's clip never cuts it off. Only inside a
+ * target: a case section carries a data-mask of its own, which is not a mask.
  */
-[data-box="lines"],
-[data-boxes~="lines"] [data-target] [data-line] {
-  --box: var(--box-line);
-}
-
-[data-box="words"],
-[data-boxes~="words"] [data-target] [data-word] {
-  --box: var(--box-word);
-}
-
-[data-box="chars"],
-[data-boxes~="chars"] [data-target] [data-char] {
-  --box: var(--box-char);
-}
-
 [data-box="masks"],
 [data-boxes~="masks"] [data-target] [data-mask] {
   --box: var(--box-mask);
-}
-
-/* Only inside a target: a case section carries a data-mask of its own, which is not a mask. */
-[data-boxes~="lines"] [data-target] [data-line],
-[data-boxes~="words"] [data-target] [data-word],
-[data-boxes~="chars"] [data-target] [data-char] {
-  outline: 1px solid var(--box);
-  outline-offset: -1px;
 }
 
 [data-boxes~="masks"] [data-target] [data-mask] {

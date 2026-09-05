@@ -127,16 +127,8 @@ new ResizeObserver(() => {
           <div class="actions">
             <button type="button" class="primary" data-action="check" data-key="Enter">Check lines <kbd>↵</kbd></button>
             <button type="button" data-action="replay" data-key="r">Replay all <kbd>R</kbd></button>
+            <button type="button" data-box="masks" data-key="m" aria-pressed="false">Masks <kbd>M</kbd></button>
           </div>
-          <fieldset class="boxes">
-            <legend class="label">Boxes</legend>
-            <div class="boxes-list">
-              <button type="button" data-box="lines" data-key="l" aria-pressed="false">Lines <kbd>L</kbd></button>
-              <button type="button" data-box="words" data-key="w" aria-pressed="false">Words <kbd>W</kbd></button>
-              <button type="button" data-box="chars" data-key="c" aria-pressed="false">Chars <kbd>C</kbd></button>
-              <button type="button" data-box="masks" data-key="m" aria-pressed="false">Masks <kbd>M</kbd></button>
-            </div>
-          </fieldset>
           <p class="verdict" role="status" data-verdict></p>
           <p class="readout" data-readout>targets 0</p>
         </div>

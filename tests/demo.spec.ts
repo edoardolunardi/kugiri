@@ -64,15 +64,12 @@ test("a replay reverts and splits again to the same result", async ({ page, brow
   await expectEveryCaseAsPainted(page, browserName);
 });
 
-test("the boxes are drawn inside the units and move nothing", async ({ page, browserName }) => {
+test("the mask outlines are drawn inside the masks and move nothing", async ({ page, browserName }) => {
   await page.goto("/");
   await revealEverything(page);
+  await page.locator("[data-box=masks]").click();
 
-  for (const level of ["lines", "words", "chars", "masks"]) {
-    await page.locator(`[data-box=${level}]`).click();
-  }
-
-  await expect(page.locator("html")).toHaveAttribute("data-boxes", "lines words chars masks");
+  await expect(page.locator("html")).toHaveAttribute("data-boxes", "masks");
   await expectEveryCaseAsPainted(page, browserName);
 });
 

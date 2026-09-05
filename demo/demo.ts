@@ -378,8 +378,9 @@ function lineText(line: HTMLElement): string {
 }
 
 /**
- * The panel's Boxes toggles: a hairline inside every unit or mask of a level, drawn by the
- * stylesheet off a list on the root, toggled from the panel and kept across reloads.
+ * The panel's Masks toggle: a hairline inside every mask, drawn by the stylesheet off a list on the
+ * root, toggled from the panel and kept across reloads. The list once named more levels, and the
+ * code still takes any number of toggles.
  */
 const BOXES_KEY = "kugiri-demo-boxes";
 
@@ -418,7 +419,9 @@ function setupHotkeys() {
 
 function setupBoxes() {
   const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-box]"));
-  const shown = new Set((localStorage.getItem(BOXES_KEY) ?? "").split(" ").filter(Boolean));
+  const levels = buttons.map((button) => button.dataset.box ?? "");
+  // Only what the panel still has a button for: a browser may remember toggles the panel has dropped.
+  const shown = new Set((localStorage.getItem(BOXES_KEY) ?? "").split(" ").filter((level) => levels.includes(level)));
 
   const apply = () => {
     for (const button of buttons) {

@@ -69,6 +69,6 @@ npm run dev                                # then open http://localhost:4173, sc
 ```
 
 A failing case prints `painted N lines, split M` with both line lists, or `N lines as painted, but
-line K moved by x, y`. The **Boxes** toggles in the panel outline every line, word, character and
-mask, which is the quickest look at what the split produced; for numbers, use the `browser-probe`
+line K moved by x, y`. The **Masks** toggle in the panel outlines every mask, one around every
+unit, which is the quickest look at what the split produced; for numbers, use the `browser-probe`
 skill.

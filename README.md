@@ -218,8 +218,8 @@ The demo is live at <https://edoardolunardi.github.io/kugiri/>.
 
 `npm run dev` opens the demo, which is also the test suite: fifty cases, each split as it
 scrolls into view. **Check lines** compares every split with the lines the browser painted before
-the split, text and geometry. **Boxes** outlines every line, word, character and mask the split
-made, so you can see what it produced. The page reveals with the Web Animations API and reverts and
+the split, text and geometry. **Masks** outlines every mask the split made, one around every unit,
+so you can see what it produced. The page reveals with the Web Animations API and reverts and
 splits every case again when its column changes width, with no reveal a second time, the way a
 consumer has to; its header shows the code for both, and for the same reveal in CSS only, as examples
 that are not part of the library.
