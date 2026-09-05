@@ -13,28 +13,36 @@
 
     <div class="page">
       <header>
-        <h1>kugiri</h1>
-        <p class="lede">Splits text into lines, words and characters exactly where the browser already broke it.</p>
-        <p>
-          Every case below is one piece of text in a situation running text can be in: a drop cap, a link that wraps, a
-          float, a second script. Each one splits and reveals as it scrolls into view.
-        </p>
-        <ul class="how">
-          <li><strong>Check lines</strong> compares every split with the lines the browser had painted before it ran, text and geometry.</li>
-          <li><strong>Replay all</strong> reverts every split and runs it again.</li>
-          <li><strong>Boxes</strong> outlines every line, word, character or mask the split made, so you can see what it produced.</li>
-        </ul>
-        <p>
-          kugiri is a split engine and nothing more. It writes the units and stops: no animation, no watching the
-          viewport, the fonts or the text. Both belong to the code that calls it, in whatever library it likes. The
-          snippets below are not part of the library and do not ship with it. They are this page's own code, shown as
-          one way to do each, in plain browser APIs and in plain CSS.
-        </p>
-        <p>
-          <strong>The reveal, an example.</strong> Each unit rises out of its mask with the Web Animations API,
-          staggered by its index. GSAP or Motion would take the same elements.
-        </p>
-        <pre><code>// Not part of kugiri: this page's own reveal, one way to animate the units.
+        <div class="masthead">
+          <h1 data-target>kugiri</h1>
+          <p class="lede" data-target>Splits text into lines, words and characters exactly where the browser already broke it.</p>
+          <p data-target>
+            Every case below is one piece of text in a situation running text can be in: a drop cap, a link that wraps,
+            a float, a second script. Each one splits and reveals as it scrolls into view.
+          </p>
+          <p data-target>One ES module, about 6.9 kB minified and gzipped, with no dependencies.</p>
+          <p class="install"><code>npm install kugiri</code></p>
+          <ul class="links">
+            <li><a href="https://www.npmjs.com/package/kugiri">npm</a></li>
+            <li><a href="https://github.com/edoardolunardi/kugiri">GitHub</a></li>
+            <li><a href="https://github.com/edoardolunardi/kugiri#readme">README</a></li>
+            <li><a href="https://github.com/edoardolunardi/kugiri/blob/main/CHANGELOG.md">Changelog</a></li>
+          </ul>
+          <p class="credit" data-target>Made by <a href="https://www.edoardolunardi.dev/" target="_blank" rel="noopener">Edoardo Lunardi</a>. MIT licensed.</p>
+        </div>
+
+        <div class="examples">
+          <p data-target>
+            kugiri is a split engine and nothing more. It writes the units and stops: no animation, no watching the
+            viewport, the fonts or the text. Both belong to the code that calls it, in whatever library it likes. The
+            snippets below are not part of the library and do not ship with it. They are this page's own code, shown as
+            one way to do each, in plain browser APIs and in plain CSS.
+          </p>
+          <p data-target>
+            <strong>The reveal, an example.</strong> Each unit rises out of its mask with the Web Animations API,
+            staggered by its index. GSAP or Motion would take the same elements.
+          </p>
+          <pre data-wipe><code>// Not part of kugiri: this page's own reveal, one way to animate the units.
 const split = splitText(target, { type: ["words"], mask: "words" });
 
 const reveal = split.words.map((word, index) =>
@@ -58,13 +66,13 @@ await Promise.all(reveal.map((animation) => animation.finished));
 for (const mask of split.masks) {
   mask.style.clipPath = "none";
 }</code></pre>
-        <p>
-          <strong>The same reveal in CSS only.</strong> The split writes every unit's index as a custom property, so
-          a stylesheet can stagger off it and no script has to animate anything. The
-          <a href="#css-reveal">CSS-only reveal</a> case runs this way: the page splits it into words, sets one
-          attribute, and the stylesheet does the rest.
-        </p>
-        <pre><code>/* Not part of kugiri: this page's own CSS-only reveal, one way to animate the units. */
+          <p data-target>
+            <strong>The same reveal in CSS only.</strong> The split writes every unit's index as a custom property, so
+            a stylesheet can stagger off it and no script has to animate anything. The
+            <a href="#css-reveal">CSS-only reveal</a> case runs this way: the page splits it into words, sets one
+            attribute, and the stylesheet does the rest.
+          </p>
+          <pre data-wipe><code>/* Not part of kugiri: this page's own CSS-only reveal, one way to animate the units. */
 .css-reveal [data-word] {
   opacity: 0;
   transform: translateY(0.6em);
@@ -81,16 +89,16 @@ for (const mask of split.masks) {
     transform: none;
   }
 }</code></pre>
-        <pre><code>// The only script the CSS-only reveal needs.
+          <pre data-wipe><code>// The only script the CSS-only reveal needs.
 splitText(target, { type: ["words"] });
 target.dataset.revealed = "";</code></pre>
-        <p>
-          <strong>The next layout, an example.</strong> A split is a snapshot of the layout the text had when it ran,
-          and nothing splits again on its own. This page watches the width of the column the cases sit in and, when it
-          changes, reverts every split and splits again, with no reveal a second time: the text stays responsive and
-          the units sit at rest.
-        </p>
-        <pre><code>// Not part of kugiri: this page's own resize handling, one way to do it.
+          <p data-target>
+            <strong>The next layout, an example.</strong> A split is a snapshot of the layout the text had when it ran,
+            and nothing splits again on its own. This page watches the width of the column the cases sit in and, when it
+            changes, reverts every split and splits again, with no reveal a second time: the text stays responsive and
+            the units sit at rest.
+          </p>
+          <pre data-wipe><code>// Not part of kugiri: this page's own resize handling, one way to do it.
 let width = main.clientWidth;
 let timer = 0;
 
@@ -103,27 +111,24 @@ new ResizeObserver(() => {
   clearTimeout(timer);
   timer = setTimeout(resplit, 150); // once a drag settles
 }).observe(main);</code></pre>
-        <p>
-          One ES module, about 6.9 kB minified and gzipped, with no dependencies.
-          <a href="https://github.com/edoardolunardi/kugiri">Source and README on GitHub</a>.
-        </p>
+        </div>
       </header>
 
       <div class="side">
-        <nav aria-label="Cases" data-nav></nav>
+        <nav aria-label="Cases" data-nav data-lenis-prevent></nav>
 
         <div class="panel">
           <div class="actions">
-            <button type="button" class="primary" data-action="check">Check lines</button>
-            <button type="button" data-action="replay">Replay all</button>
+            <button type="button" class="primary" data-action="check" data-key="Enter">Check lines <kbd>↵</kbd></button>
+            <button type="button" data-action="replay" data-key="r">Replay all <kbd>R</kbd></button>
           </div>
           <fieldset class="boxes">
             <legend class="label">Boxes</legend>
             <div class="boxes-list">
-              <button type="button" data-box="lines" aria-pressed="false">Lines</button>
-              <button type="button" data-box="words" aria-pressed="false">Words</button>
-              <button type="button" data-box="chars" aria-pressed="false">Chars</button>
-              <button type="button" data-box="masks" aria-pressed="false">Masks</button>
+              <button type="button" data-box="lines" data-key="l" aria-pressed="false">Lines <kbd>L</kbd></button>
+              <button type="button" data-box="words" data-key="w" aria-pressed="false">Words <kbd>W</kbd></button>
+              <button type="button" data-box="chars" data-key="c" aria-pressed="false">Chars <kbd>C</kbd></button>
+              <button type="button" data-box="masks" data-key="m" aria-pressed="false">Masks <kbd>M</kbd></button>
             </div>
           </fieldset>
           <p class="verdict" role="status" data-verdict></p>
@@ -448,6 +453,16 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
         </section>
       </main>
     </div>
+
+    <!-- Outside the page grid: a sticky sidebar travels the whole grid, and would reach down over the footer. -->
+    <footer class="foot">
+      <p>kugiri is made by <a href="https://www.edoardolunardi.dev/" target="_blank" rel="noopener">Edoardo Lunardi</a> and released under the MIT license.</p>
+      <ul class="links">
+        <li><a href="https://www.npmjs.com/package/kugiri">npm</a></li>
+        <li><a href="https://github.com/edoardolunardi/kugiri">GitHub</a></li>
+        <li><a href="https://github.com/edoardolunardi/kugiri/blob/main/CHANGELOG.md">Changelog</a></li>
+      </ul>
+    </footer>
 
     <script type="module" src="./demo.ts"></script>
   </body>

@@ -2,6 +2,7 @@
 // Animations API (or leaves the reveal to the stylesheet), and can check every split against the
 // lines the browser painted before the split ran. Nothing here is part of the library.
 
+import Lenis from "lenis";
 import { type MaskReach, type SplitLevel, splitText, type TextSplit } from "../src/index";
 
 /** The `mask` option a case asks for: its levels, each with the case's reach when it names one. */
@@ -18,6 +19,8 @@ type Reveal = {
   reach: string | undefined;
   ignore: string | undefined;
   css: boolean;
+  /** A stagger of the target's own, in place of its level's. */
+  stagger: number | undefined;
   split: TextSplit | null;
   expected: Painted;
 };
@@ -32,6 +35,12 @@ type Painted = {
 const EASE = "cubic-bezier(0.23, 1, 0.32, 1)";
 const DURATION = 1000;
 const STAGGER: Record<SplitLevel, number> = { lines: 100, words: 30, chars: 15 };
+
+/** The header's copy is one cascade, twenty lines or so, so its lines follow each other closer than a case's. */
+const INTRO_STAGGER = 60;
+
+/** A snippet takes this many lines' worth of the cascade, so the copy after it does not start at once. */
+const WIPE_LINES = 3;
 
 /** A frame this far past 60fps is one the reveal visibly dropped. */
 const SLOW_FRAME_MS = 34;
@@ -374,6 +383,39 @@ function lineText(line: HTMLElement): string {
  */
 const BOXES_KEY = "kugiri-demo-boxes";
 
+/**
+ * Every button in the panel names its key in `data-key`, and the key presses the button. Nothing
+ * fires while typing in a field or with a modifier down, and Enter is left to whatever control has
+ * the focus, which would fire it a second time.
+ */
+function setupHotkeys() {
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-key]"));
+
+  document.addEventListener("keydown", (event) => {
+    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
+      return;
+    }
+
+    const focused = document.activeElement;
+
+    if (
+      focused instanceof HTMLElement &&
+      (focused.isContentEditable ||
+        focused.matches("input, textarea, select") ||
+        (event.key === "Enter" && focused.matches("a, button, summary")))
+    ) {
+      return;
+    }
+
+    const button = buttons.find((candidate) => candidate.dataset.key?.toLowerCase() === event.key.toLowerCase());
+
+    if (button) {
+      event.preventDefault();
+      button.click();
+    }
+  });
+}
+
 function setupBoxes() {
   const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-box]"));
   const shown = new Set((localStorage.getItem(BOXES_KEY) ?? "").split(" ").filter(Boolean));
@@ -436,7 +478,13 @@ function describe(reveal: Reveal): string[] {
 
 class Demo {
   reveals: Reveal[] = [];
+  /** The header's own copy, split line by line like a case but never checked or listed. */
+  intros: Reveal[] = [];
+  /** The header's snippets, not split but wiped into view in the same cascade. */
+  wipes: HTMLElement[] = [];
   observer: IntersectionObserver;
+  /** Smooth scrolling for the page, stepped from the harness's own frame loop. Not part of the library. */
+  lenis: Lenis;
   readout: HTMLElement;
   verdict: HTMLElement;
   splitTimes: number[] = [];
@@ -474,6 +522,26 @@ class Demo {
         reach,
         ignore: section.dataset.ignore,
         css: section.dataset.reveal === "css",
+        stagger: undefined,
+        split: null,
+        expected: { lines: [], ends: [], height: 0 },
+      });
+    }
+
+    // The header's copy splits too, so the effect is on the page before any case is. The snippets
+    // are not copy and stay as they are. Nothing checks these targets and the contents do not list them.
+    this.wipes = Array.from(document.querySelectorAll<HTMLElement>("header [data-wipe]"));
+
+    for (const target of document.querySelectorAll<HTMLElement>("header [data-target]")) {
+      this.intros.push({
+        target,
+        section: target.closest("header") as HTMLElement,
+        unit: "lines",
+        mask: ["lines"],
+        reach: undefined,
+        ignore: undefined,
+        css: false,
+        stagger: INTRO_STAGGER,
         split: null,
         expected: { lines: [], ends: [], height: 0 },
       });
@@ -544,6 +612,12 @@ class Demo {
     document.querySelector("[data-action=replay]")?.addEventListener("click", this.replay);
 
     setupBoxes();
+    setupHotkeys();
+
+    // The page scrolls through Lenis, which eases the wheel and the anchor links and steps on the
+    // frame loop below. It scrolls the window itself, so the observer and the painted lines are
+    // none the wiser, and it stands down on its own for a reduced-motion setting.
+    this.lenis = new Lenis({ anchors: true });
     requestAnimationFrame(this.onFrame);
 
     // A split is a snapshot of one layout, so the page does what a consumer has to: when the column
@@ -574,10 +648,23 @@ class Demo {
       this.observer.observe(reveal.target);
     }
 
+    // Copy and snippets in document order, since the observer reports what is in view in the order
+    // it was given and the header's cascade follows that order. A snippet already wiped stays as it is.
+    for (const element of document.querySelectorAll<HTMLElement>("header [data-target], header [data-wipe]")) {
+      if (!this.wipes.includes(element) || !element.hasAttribute("data-revealed")) {
+        this.observer.observe(element);
+      }
+    }
+
     this.render();
   };
 
   onIntersect = (entries: IntersectionObserverEntry[]) => {
+    // One cascade per column of the header, so the copy and the examples start together on load.
+    const offsets = new Map<Element, number>();
+    const columnOf = (element: Element) => element.closest(".masthead, .examples") ?? element;
+    const offsetOf = (element: Element) => offsets.get(columnOf(element)) ?? 0;
+
     for (const entry of entries) {
       if (!entry.isIntersecting) {
         continue;
@@ -585,15 +672,32 @@ class Demo {
 
       this.observer.unobserve(entry.target);
 
-      const reveal = this.reveals.find((candidate) => candidate.target === entry.target);
+      if (entry.target instanceof HTMLElement && this.wipes.includes(entry.target)) {
+        this.wipe(entry.target, offsetOf(entry.target));
+        offsets.set(columnOf(entry.target), offsetOf(entry.target) + WIPE_LINES);
+        continue;
+      }
 
-      if (reveal) {
+      const reveal = [...this.reveals, ...this.intros].find((candidate) => candidate.target === entry.target);
+
+      if (!reveal) {
+        continue;
+      }
+
+      // Header targets that come into view together play as one cascade per column, in document
+      // order, each picking up where the last one's lines end.
+      if (this.intros.includes(reveal)) {
+        const lines = this.play(reveal, offsetOf(reveal.target));
+
+        offsets.set(columnOf(reveal.target), offsetOf(reveal.target) + lines);
+      } else {
         this.play(reveal);
       }
     }
   };
 
-  play(reveal: Reveal) {
+  /** Splits and reveals one target, its units staggered from `offset` units in; returns how many units it has. */
+  play(reveal: Reveal, offset = 0): number {
     const start = performance.now();
 
     reveal.split = splitText(reveal.target, { type: [reveal.unit], mask: maskOption(reveal), ignore: reveal.ignore });
@@ -602,11 +706,12 @@ class Demo {
 
     if (reveal.css) {
       reveal.target.setAttribute("data-revealed", "");
-      return;
+      return 0;
     }
 
     const units = reveal.split[reveal.unit];
     const masks = reveal.split.masks;
+    const stagger = reveal.stagger ?? STAGGER[reveal.unit];
 
     const animations = units.map((unit, index) =>
       unit.animate(
@@ -616,7 +721,7 @@ class Demo {
         ],
         {
           duration: DURATION,
-          delay: index * STAGGER[reveal.unit],
+          delay: (offset + index) * stagger,
           easing: EASE,
           // Hidden until its turn comes; at the end, the unit's own resting state, with nothing to drop.
           fill: "backwards",
@@ -633,9 +738,25 @@ class Demo {
         mask.style.clipPath = "none";
       }
     });
+
+    return units.length;
+  }
+
+  /** Opens a snippet top to bottom, `offset` lines into the header's cascade. Not a split: the code stays as it is. */
+  wipe(snippet: HTMLElement, offset: number) {
+    snippet.animate(
+      [
+        { clipPath: "inset(-8px -8px 100% -8px)", transform: "translateY(12px)" },
+        { clipPath: "inset(-8px)", transform: "none" },
+      ],
+      { duration: DURATION, delay: offset * INTRO_STAGGER, easing: EASE, fill: "backwards" }
+    );
+
+    snippet.setAttribute("data-revealed", "");
   }
 
   onFrame = (now: number) => {
+    this.lenis.raf(now);
     this.frames += 1;
 
     if (now - this.lastFrame > SLOW_FRAME_MS) {
@@ -724,11 +845,18 @@ class Demo {
       }
     }
 
+    for (const intro of this.intros) {
+      if (intro.split) {
+        intro.split.revert();
+        intro.target.removeAttribute("data-revealed");
+      }
+    }
+
     for (const reveal of this.reveals) {
       reveal.expected = paintedLines(reveal.target, reveal.target, reveal.ignore);
     }
 
-    for (const reveal of this.reveals) {
+    for (const reveal of [...this.reveals, ...this.intros]) {
       if (!reveal.split) {
         continue;
       }
@@ -755,6 +883,16 @@ class Demo {
     this.slowFrames = 0;
     this.verdict.textContent = "";
 
+    for (const intro of this.intros) {
+      intro.split?.revert();
+      intro.split = null;
+      intro.target.removeAttribute("data-revealed");
+    }
+
+    for (const wipe of this.wipes) {
+      wipe.removeAttribute("data-revealed");
+    }
+
     for (const reveal of this.reveals) {
       reveal.split?.revert();
       reveal.split = null;
@@ -776,7 +914,7 @@ class Demo {
     const worst = this.splitTimes.reduce((max, time) => Math.max(max, time), 0);
 
     this.readout.textContent = [
-      `targets ${this.reveals.length}, splits ${this.splitTimes.length}`,
+      `targets ${this.reveals.length + this.intros.length}, splits ${this.splitTimes.length}`,
       `split total ${total.toFixed(1)} ms, worst ${worst.toFixed(1)} ms`,
       `long tasks ${this.longTasks}, slow frames ${this.slowFrames} / ${this.frames}`,
     ].join("\n");
