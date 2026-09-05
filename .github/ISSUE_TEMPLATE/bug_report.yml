@@ -5,94 +5,51 @@ body:
   - type: markdown
     attributes:
       value: |
-        kugiri reads the lines the browser painted and cuts the DOM at those points. A bug is a split
-        that comes out different from the paint, moves a wrap, loses content or throws. The fields
-        below are what it takes to reproduce one; a report without the markup, the CSS and the
-        browser cannot be.
+        Thanks for reporting. Only the first field is required; the rest help find the cause faster, so
+        fill in what you can. If you only have a screenshot and a hunch, that is fine too.
 
   - type: textarea
     id: what
     attributes:
       label: What happened
-      description: What the split produced. If it threw, the error and the stack.
+      description: What the split produced, and what you expected instead. If it threw, the error is enough.
       placeholder: The second line came out as two units, and the word after the link was lost.
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: What the browser painted
-      description: The lines as they were before the split, or what you expected the units to be.
     validations:
       required: true
 
   - type: textarea
     id: reproduction
     attributes:
-      label: Reproduction
+      label: How to see it
       description: |
-        A link to a minimal page (StackBlitz, CodePen, a repository), or the markup and the CSS that
-        govern its wrapping pasted here: the font, the width, `text-wrap`, `hyphens`, `columns`,
-        `white-space`, `::first-letter`, floats. The fewer lines it takes to show it, the sooner it is fixed.
-      render: html
-    validations:
-      required: true
+        A link to a page that shows it (StackBlitz, CodePen, your site, a repository), or the markup and
+        the CSS pasted here. The styles that decide where text wraps matter most: the font, the width,
+        `text-wrap`, `hyphens`, `columns`, `white-space`, floats.
 
   - type: textarea
     id: call
     attributes:
       label: The call
-      description: How `splitText` was called, options included, and when (after `document.fonts.ready`, on resize, and so on).
+      description: How `splitText` was called, if you have it handy.
       render: ts
-      placeholder: |
-        await document.fonts.ready;
-        const split = splitText(target, { type: ["words"], mask: "lines" });
-    validations:
-      required: true
+      placeholder: 'splitText(target, { type: ["words"], mask: "lines" });'
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and version
+      placeholder: Safari 26.1 on macOS, Chrome 143 on Windows
 
   - type: input
     id: version
     attributes:
       label: kugiri version
       placeholder: 0.3.0
-    validations:
-      required: true
 
-  - type: checkboxes
-    id: browsers
+  - type: markdown
     attributes:
-      label: Browsers it happens in
-      description: Tick every one you tried, whether or not it fails there, and give versions below.
-      options:
-        - label: Chrome or another Chromium browser
-        - label: Safari
-        - label: Firefox
-        - label: Something else, named below
-
-  - type: input
-    id: browser-versions
-    attributes:
-      label: Browser versions and platform
-      placeholder: Safari 26.1 on macOS 26.1, Chrome 143 on Windows 11
-    validations:
-      required: true
-
-  - type: input
-    id: case
-    attributes:
-      label: The nearest demo case
-      description: The case on the demo that comes closest to your situation, if one does, as its id, for example `#float-left`.
-
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Before reporting
-      description: The two questions that account for most reports.
-      options:
-        - label: The split runs after the fonts it is set in have loaded, and runs again after anything that moves a wrap (a resize, new text, a style change). A split is a snapshot of one layout.
-          required: true
-        - label: I read "What a unit is" in the README, and the piece the split left whole or untouched is text, not a replaced element, an inline-block, a block or a float.
-          required: true
-        - label: I searched the open and closed issues.
-          required: true
+      value: |
+        Two things account for a good share of reports, in case they save you a wait: a split is a
+        snapshot of one layout, so it is worth running it after the fonts have loaded and again after
+        anything that moves a wrap (a resize, new text). And a piece that is not text (an image, an
+        inline-block, a float) is left whole on purpose; the README's "What a unit is" section says which.

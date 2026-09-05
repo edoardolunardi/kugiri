@@ -259,8 +259,8 @@ A pull request follows the template in `.github/PULL_REQUEST_TEMPLATE.md`: why, 
 demo case that shows it, and a checklist. A workflow checks the description against the template,
 the title and the commits against Conventional Commits, and runs the types, the lint and the suite
 in the three browsers; main requires all of them before a merge.
-An issue is opened through one of the forms in `.github/ISSUE_TEMPLATE/`, which ask for what a
-report needs to be reproduced: the markup, the CSS that governs its wrapping, the call and the browser.
+An issue can be opened through the forms in `.github/ISSUE_TEMPLATE/`, which suggest what helps a
+report get reproduced, or as a blank issue.
 
 ## License
 

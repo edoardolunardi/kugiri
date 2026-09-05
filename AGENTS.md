@@ -16,7 +16,7 @@ suite. This file is the one place agents read instructions from; the skills unde
 | `tests/demo.spec.ts`   | Playwright: opens the demo, reveals everything, asserts every case's check reads ok.       |
 | `scripts/release.mjs`  | The release, in one command, up to the tag push. `size.mjs` and `notes.mjs` serve it.      |
 | `.github/workflows/`   | `pull-request.yml` and `pull-request-description.yml` check every pull request; `pages.yml` publishes the demo on every push to main; `release.yml` publishes a tag to npm. |
-| `.github/ISSUE_TEMPLATE/` | The forms an issue is opened with: a bug report asking for the markup, the CSS, the call and the browser; a feature request. Blank issues are off. |
+| `.github/ISSUE_TEMPLATE/` | The forms an issue is opened with: a bug report and a feature request. One required field each; the rest are hints at what helps. |
 | `.github/PULL_REQUEST_TEMPLATE.md` | The sections every pull request description must have. `scripts/pull-request.mjs` checks a description against it. |
 | `.agents/skills/`      | Procedures: adding a case, probing a split in a browser, changing the library, releasing.  |
 
