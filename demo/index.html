@@ -19,8 +19,8 @@
           <p data-target>
             kugiri <span lang="ja">(区切り)</span> is the point where one segment ends and the next begins. That is what
             this library finds: the line boxes the browser painted, the words and graphemes inside them, and nothing
-            else. It cuts the DOM at those points and marks every unit so you can animate it, in CSS or in script. It
-            never decides where a line should break; the browser did that already.
+            else. It cuts the DOM at those points and marks every unit. It never decides where a line should break;
+            the browser did that already.
           </p>
           <p data-target>
             Every case below is one piece of text in a situation running text can be in: a drop cap, a link that wraps,
@@ -46,10 +46,10 @@
 
         <div class="examples">
           <p data-target>
-            kugiri <span lang="ja">(区切り)</span> is a split engine and nothing more. It writes the units and stops: no animation, no watching the
-            viewport, the fonts or the text. Both belong to the code that calls it, in whatever library it likes. The
-            snippets below are not part of the library and do not ship with it. They are this page's own code, shown as
-            one way to do each, in plain browser APIs and in plain CSS.
+            The split writes the units and stops: no animation, no watching the viewport, the fonts or the text. All
+            of that belongs to the code that calls it, in whatever library it likes. The snippets below are this
+            page's own code, one way to do each, in plain browser APIs and in plain CSS; none of it ships with the
+            library.
           </p>
           <p data-target>
             <strong>The reveal, an example.</strong> Each unit rises out of its mask with the Web Animations API,
@@ -491,6 +491,19 @@ and a newline, the way a typewriter would set them. The rest of this sentence is
         <li><a href="https://www.contentarchitecture.dev/" target="_blank" rel="noopener">The Content Architecture</a></li>
         <li><a href="https://www.aspensearch.com/" target="_blank" rel="noopener">Aspen Search</a></li>
       </ul>
+    </section>
+
+    <section class="compare" aria-labelledby="compare-title">
+      <h2 class="group-title" id="compare-title">Compared with GSAP SplitText</h2>
+      <p>Read off SplitText 3.15.0, the current release in September 2026, and checked by splitting the same paragraphs with both in Chromium, WebKit and Firefox. The two are not exclusive: kugiri's units are elements, and GSAP animates them like any other. The <a href="https://github.com/edoardolunardi/kugiri#compared-with-gsap-splittext" target="_blank" rel="noopener">README</a> has the comparison in full.</p>
+      <ul class="points">
+        <li><strong>Where the lines come from.</strong> SplitText wraps every word in an inline-block first, then reads where the boxes landed and starts a line wherever a word's top is below the last one's. Its lines are the lines of the wrapped text. kugiri measures the untouched text with <code>Range.getClientRects()</code> and cuts it where the browser had already broken it, so no box can move a wrap.</li>
+        <li><strong>A break inside a word.</strong> An inline-block cannot break inside, so a word the browser hyphenated, or broke under overflow-wrap, moves whole to the next line: a four-line paragraph under <code>hyphens: auto</code> came back from SplitText five lines tall, and a long URL under <code>overflow-wrap: anywhere</code> as one box overflowing its column. kugiri keeps the four lines and restates the hyphen the browser drew.</li>
+        <li><strong>A script without spaces.</strong> SplitText splits on the space character, so a Japanese sentence is one word and one line, however many the browser painted. kugiri segments words with <code>Intl.Segmenter</code> and reads the breaks off the paint.</li>
+        <li><strong>Whitespace.</strong> SplitText collapses it with a regular expression before the browser sees it, so three lines under <code>white-space: pre-line</code> come back as one. kugiri leaves whitespace to the browser.</li>
+        <li><strong>Reads and writes.</strong> SplitText reads boxes between its writes, a forced layout each. kugiri reads everything first and writes everything after, across every target passed together.</li>
+      </ul>
+      <p>What SplitText does that kugiri does not: split again on resize and on font load, set aria attributes for you, take a custom word delimiter and a <code>prepareText</code> hook. kugiri is a snapshot of one layout and leaves those to the caller. SplitText is 3.7 kB gzipped on top of the 28 kB GSAP core it needs, under the GSAP standard license; kugiri is 7.5 kB gzipped, dependency-free, under MIT.</p>
     </section>
 
     <footer class="foot">

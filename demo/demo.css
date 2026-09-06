@@ -306,8 +306,9 @@ header pre {
   text-underline-offset: 3px;
 }
 
-/* Sites built on the split, above the footer and outside the grid like it. */
-.showcase {
+/* Sites built on the split, and the comparison with SplitText: above the footer and outside the grid like it. */
+.showcase,
+.compare {
   display: grid;
   gap: 16px;
   margin-top: 56px;
@@ -323,9 +324,37 @@ header pre {
   color: var(--muted);
 }
 
-.showcase a {
+/* The comparison is copy like the header's, at the body size, not a caption like the showcase. */
+.compare p,
+.compare li {
+  max-width: 64ch;
+  margin: 0;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.showcase a,
+.compare a {
   text-decoration-color: var(--rule);
   text-underline-offset: 3px;
+}
+
+.points {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.points strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.compare code {
+  font: 0.92em var(--mono);
 }
 
 .sites {
@@ -364,6 +393,7 @@ header pre {
   .links a:hover,
   .credit a:hover,
   .showcase a:hover,
+  .compare a:hover,
   .foot a:hover {
     text-decoration-color: currentColor;
   }

@@ -276,6 +276,42 @@ Content is classified by how it lays out, not by tag:
   and drops what does not reproduce it, but a transformed `::first-line` is the one case to check by
   eye in Safari.
 
+## Compared with GSAP SplitText
+
+GSAP's [SplitText](https://gsap.com/docs/v3/Plugins/SplitText/) makes the same three kinds of unit,
+and the two are not exclusive: kugiri's units are elements, and GSAP animates them like any other.
+The difference is where the lines come from. What follows was read off SplitText 3.15.0, the
+current release in September 2026, and checked by splitting the same paragraphs with both in
+Chromium, WebKit and Firefox.
+
+- **SplitText wraps first and measures after.** It splits every text node on the space character,
+  wraps each word in an `inline-block`, then reads the words' bounding boxes and starts a new line
+  wherever a word's top is below the one before it. The lines it returns are the lines of the
+  wrapped text. kugiri measures the untouched text with `Range.getClientRects()`, cuts it with
+  `Range.extractContents()` at the breaks the browser had already painted, and keeps its words and
+  characters under `text-wrap: nowrap`, so no box can move a wrap.
+- **An inline-block cannot break inside.** A word the browser hyphenated, or broke under
+  `overflow-wrap`, moves whole to the next line once it is a box. A four-line paragraph with
+  `hyphens: auto` came back from SplitText as five lines, a line taller; a long URL under
+  `overflow-wrap: anywhere` came back as one box overflowing its column. kugiri returns the four
+  lines and restates the hyphen the browser drew.
+- **A word is what a space separates.** A Japanese or Thai sentence has none, so SplitText returns
+  it as one word and one line, however many the browser painted. kugiri segments words with
+  `Intl.Segmenter` and reads the breaks off the paint.
+- **Whitespace is rewritten before the browser sees it.** SplitText collapses runs of whitespace
+  with a regular expression (`reduceWhiteSpace`, on by default), so authored newlines under
+  `white-space: pre-line` become spaces and three lines become one. kugiri leaves whitespace to
+  the browser.
+- **Reads and writes interleave.** SplitText reads bounding boxes between its writes, per nested
+  element and, with `deepSlice`, per word, each a forced layout. kugiri reads everything first and
+  writes everything after, across every target passed together.
+
+What SplitText does that kugiri does not: split again on resize and on font load (`autoSplit`),
+set `aria-label` on the target and `aria-hidden` on the units, take a custom word delimiter, a
+`prepareText` hook and a `specialChars` list. kugiri is a snapshot of one layout and leaves those
+to the caller. SplitText is 3.7 kB gzipped on top of the 28 kB GSAP core it needs, under the GSAP
+standard license; kugiri is 7.5 kB gzipped, dependency-free, under MIT.
+
 ## Demo
 
 The demo is live at <https://edoardolunardi.github.io/kugiri/>.
