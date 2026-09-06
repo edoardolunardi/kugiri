@@ -183,6 +183,9 @@ const INHERIT_DECORATION = DECORATION_PROPS.map((prop) => `${prop}:inherit`).joi
 
 const UNIT_ATTRIBUTE: Record<SplitLevel, string> = { lines: "line", words: "word", chars: "char" };
 
+/** Whether a `::first-letter` declaration list floats the glyph. */
+const FLOATED = /(?:^|;)float:(?!none)/;
+
 /**
  * What a `::first-letter` rule can change about the glyph, with what each property is when no rule
  * touches it: inherited ones take the container's value, the rest their initial value. Only a
@@ -463,9 +466,26 @@ function planRun(container: Element, from: number, to: number, context: Context)
   /** The floats met in the run, each with the block-axis start of its margin box, to find its line by. */
   const floats: { node: HTMLElement; top: number }[] = [];
   let previous: DOMRect | null = null;
-  // A floated `::first-letter` is a box beside the first word, not part of its extent: the word is
-  // measured without that glyph, which the write phase lifts out as a float of its own.
-  let dropCap = from === 0 && getComputedStyle(container, "::first-letter").getPropertyValue("float") !== "none";
+  // What the container's `::first-letter` changes, if anything; the first word measured holds the
+  // glyph. A floated glyph is a box beside that word, not part of its extent: the word is measured
+  // without it, and the write phase lifts it out as a float of its own.
+  const glyphStyle = from === 0 ? firstLetterOf(container, style) : "";
+  const floated = FLOATED.test(glyphStyle);
+  let glyphAhead = glyphStyle !== "";
+  // iOS WebKit reads every range in the node holding a styled first letter as many characters late
+  // as the glyph is long, and clamps at the end. Ranges on that node are moved back by that much,
+  // and the glyph, out of reach, is left out of the word the way a floated one is.
+  let skew: { node: Text; from: number; by: number } | null = null;
+
+  /** The rects of a stretch of a text node, read past the skew where there is one. */
+  const select = (text: Text, start: number, end: number) => {
+    const shift = skew && skew.node === text ? skew : null;
+
+    range.setStart(text, shift ? Math.max(start, shift.from) - shift.by : start);
+    range.setEnd(text, shift ? end - shift.by : end);
+
+    return range.getClientRects();
+  };
 
   // A new line starts where a piece's centre lands past the previous one's box (a later line),
   // entirely before it (the next column), or lower on the same line while back at the line start
@@ -503,12 +523,15 @@ function planRun(container: Element, from: number, to: number, context: Context)
     const rows: Row[] = [];
 
     for (const rect of Array.from(rects)) {
-      if (rect.width === 0 && rect.height === 0) {
+      const span = along(rect);
+      const band = across(rect);
+
+      // A rect with no extent along the line holds no text: a collapsed space, or the end of the
+      // line before a wrap, which iOS WebKit reports for a range that starts at that wrap.
+      if (span.start === span.end) {
         continue;
       }
 
-      const span = along(rect);
-      const band = across(rect);
       const row = rows.find((entry) => inRow(band, across(entry.rect)));
 
       if (row) {
@@ -527,23 +550,39 @@ function planRun(container: Element, from: number, to: number, context: Context)
     const end = start + word.length;
     let glyphLength = 0;
 
-    if (dropCap) {
-      dropCap = false;
+    if (glyphAhead) {
+      glyphAhead = false;
 
       const glyph = graphemes(text.data.slice(start, end)).next().value;
 
-      if (glyph && glyph.length < word.length) {
-        glyphLength = glyph.length;
+      if (glyph) {
+        // A glyph read late leaves the node's whole range with as many rects as the rest of the
+        // node alone; read right, it adds a box of its own.
+        const whole = select(text, start, text.data.length).length;
+
+        if (select(text, start + glyph.length, text.data.length).length === whole) {
+          skew = { node: text, from: start + glyph.length, by: glyph.length };
+        }
+
+        if (glyph.length < word.length && (floated || skew)) {
+          glyphLength = glyph.length;
+        }
       }
     }
 
-    range.setStart(text, start + glyphLength);
-    range.setEnd(text, end);
-
-    const rows = rowsOf(range.getClientRects());
+    const rows = rowsOf(select(text, start + glyphLength, end));
 
     if (rows.length === 0) {
       return;
+    }
+
+    // A glyph out of reach that does not float is inline in its word, so the word runs from the
+    // line's start edge, where a first letter always sits, to where the rest of it was read.
+    if (glyphLength && !floated) {
+      const edge = along(container.getBoundingClientRect()).start;
+      const inset = ["paddingInlineStart", "borderInlineStartWidth", "textIndent"] as const;
+
+      rows[0].start = inset.reduce((at, prop) => at + Number.parseFloat(style[prop]), edge);
     }
 
     word.first = rows[0];
@@ -562,14 +601,11 @@ function planRun(container: Element, from: number, to: number, context: Context)
 
         for (const grapheme of graphemes(text.data.slice(start, end))) {
           if (grapheme.index < glyphLength) {
-            starts.push(Number.NaN);
+            starts.push(floated ? Number.NaN : rows[0].start);
             continue;
           }
 
-          range.setStart(text, start + grapheme.index);
-          range.setEnd(text, start + grapheme.index + grapheme.length);
-
-          const rect = range.getClientRects()[0];
+          const rect = select(text, start + grapheme.index, start + grapheme.index + grapheme.length)[0];
 
           starts.push(rect ? along(rect).start : Number.NaN);
         }
@@ -594,10 +630,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
     const rowsOfPrefix = (count: number) => {
       const last = list[count - 1];
 
-      range.setStart(text, start);
-      range.setEnd(text, start + last.index + last.length);
-
-      return rowsOf(range.getClientRects()).length;
+      return rowsOf(select(text, start, start + last.index + last.length)).length;
     };
 
     consider(rows[0].rect, { text, offset: start, fragment: null });
@@ -721,7 +754,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
     }
 
     // A pseudo first letter never reaches past a box that comes first on the line.
-    dropCap = false;
+    glyphAhead = false;
     consider(rect, { before: node });
 
     if (node instanceof HTMLElement && !(context.ignore && node.matches(context.ignore))) {
@@ -785,12 +818,11 @@ function planRun(container: Element, from: number, to: number, context: Context)
       return "";
     }
 
-    const pseudo = getComputedStyle(container, "::first-letter");
-
-    if (pseudo.getPropertyValue("float") === "none") {
+    if (!floated) {
       return "";
     }
 
+    const pseudo = getComputedStyle(container, "::first-letter");
     const word = first.text.words[0];
     const glyph = graphemes(first.text.node.data.slice(word.index, word.index + word.length)).next().value;
 
@@ -798,10 +830,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
       return "";
     }
 
-    range.setStart(first.text.node, word.index + glyph.length);
-    range.setEnd(first.text.node, word.index + word.length);
-
-    const rest = range.getClientRects()[0];
+    const rest = select(first.text.node, word.index + glyph.length, word.index + word.length)[0];
     const box = container.getBoundingClientRect();
 
     if (!rest) {
@@ -903,10 +932,15 @@ function planRun(container: Element, from: number, to: number, context: Context)
     }
   });
 
+  const lead = pieces[0];
+
   return {
     container,
     from,
-    firstLetter: from === 0 ? firstLetterOf(container, style, pieces, floatedFirstLetterBox()) : null,
+    firstLetter:
+      glyphStyle && lead && "text" in lead && lead.text.words.length > 0
+        ? { declarations: [glyphStyle, floatedFirstLetterBox()].filter(Boolean).join(";") }
+        : null,
     firstLine: from === 0 ? firstLineOf(container, style) : "",
     firstRowEnd: firstRowEndOf(),
     anchor: container.childNodes[to] ?? null,
@@ -921,12 +955,6 @@ function planRun(container: Element, from: number, to: number, context: Context)
 }
 
 /**
- * A `::first-letter` the container styles differently from its text. No browser can be trusted to
- * keep applying the pseudo once the first line is a nested block (Firefox never does, Chrome drops
- * it when the text node moves), and none applies it inside an inline-block unit, so the write
- * phase puts the same declarations on the glyph itself.
- */
-/**
  * What a `::first-line` changes about the container's first line. Firefox drops the pseudo once
  * that line is a nested block, and no engine carries it into an inline-block unit, so the same
  * declarations go onto the first line block, where every unit inherits them.
@@ -939,25 +967,22 @@ function firstLineOf(container: Element, style: CSSStyleDeclaration): string {
     .join(";");
 }
 
-function firstLetterOf(container: Element, style: CSSStyleDeclaration, pieces: Piece[], floatBox: string): FirstLetter | null {
-  const first = pieces[0];
-
-  if (!first || !("text" in first) || first.text.words.length === 0) {
-    return null;
-  }
-
+/**
+ * What a `::first-letter` changes about the container's glyph, as declarations. No browser can be
+ * trusted to keep applying the pseudo once the first line is a nested block (Firefox never does,
+ * Chrome drops it when the text node moves), and none applies it inside an inline-block unit, so
+ * the write phase puts the same declarations on the glyph itself.
+ */
+function firstLetterOf(container: Element, style: CSSStyleDeclaration): string {
   const pseudo = getComputedStyle(container, "::first-letter");
   const changed = (prop: string, unstyled: string) => pseudo.getPropertyValue(prop) !== unstyled;
-  const declarations = [
+
+  return [
     ...FIRST_LETTER_INHERITED.filter((prop) => changed(prop, style.getPropertyValue(prop))),
     ...Object.keys(FIRST_LETTER_INITIAL).filter((prop) => changed(prop, FIRST_LETTER_INITIAL[prop])),
-  ].map((prop) => `${prop}:${pseudo.getPropertyValue(prop)}`);
-
-  if (floatBox) {
-    declarations.push(floatBox);
-  }
-
-  return declarations.length > 0 ? { declarations: declarations.join(";") } : null;
+  ]
+    .map((prop) => `${prop}:${pseudo.getPropertyValue(prop)}`)
+    .join(";");
 }
 
 type Span = { start: number; end: number };
@@ -1071,7 +1096,8 @@ function hyphenGlyph(width: number, context: Context) {
 
 /**
  * A fragment a break left at the end of a line, measured once the cut has made it the line's end:
- * the room it reached before, less its natural width now, is the hyphen the browser had drawn.
+ * the room it reached before, less its natural width now, is the hyphen the browser had drawn. A
+ * pixel or less of it is rounding, not a hyphen: WebKit reports the room in whole pixels.
  */
 function restateHyphen(pending: PendingHyphen, run: RunPlan, context: Context) {
   const { along } = run;
@@ -1094,7 +1120,7 @@ function restateHyphen(pending: PendingHyphen, run: RunPlan, context: Context) {
 
     const hyphen = pending.fragment.extent - (end - start);
 
-    if (hyphen > 0.5) {
+    if (hyphen > 1) {
       pending.unit.append(hyphenGlyph(hyphen, context));
     }
 
@@ -1133,7 +1159,7 @@ function restateHyphen(pending: PendingHyphen, run: RunPlan, context: Context) {
 
   const hyphen = pending.fragment.extent - (end - start);
 
-  if (hyphen > 0.5) {
+  if (hyphen > 1) {
     tail.after(hyphenGlyph(hyphen, context));
   }
 }
@@ -1525,7 +1551,7 @@ function restateFirstLetter(line: HTMLElement, firstLetter: FirstLetter, split: 
 
   const start = node.data.search(/\S/);
   const unit = node.parentElement;
-  const floated = /(?:^|;)float:(?!none)/.test(firstLetter.declarations);
+  const floated = FLOATED.test(firstLetter.declarations);
   const charUnit = unit && context.created.has(unit) && split.chars.includes(unit) ? unit : null;
 
   // A char split already has the glyph in a span of its own.

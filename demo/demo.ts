@@ -132,7 +132,9 @@ function paintedLines(target: HTMLElement, relativeTo: HTMLElement = target, ign
     const rows: DOMRect[] = [];
 
     for (const rect of Array.from(rects)) {
-      if (rect.width === 0 && rect.height === 0) {
+      // No extent along the line is no text: a collapsed space, or the end of the line before a
+      // wrap, which iOS WebKit reports for a range that starts at that wrap.
+      if (alongEnd(rect) === along(rect)) {
         continue;
       }
 

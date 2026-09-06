@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- iOS Safari reads every range in the text that follows a styled `::first-letter` one glyph
+  late, so a drop cap paragraph split into words or chars came out with every unit sized for
+  the character after it. The split now notices the shift, since the node's whole range comes
+  back without the glyph's own box, and reads that node one glyph back. A first letter that
+  does not float is measured from the line's start edge, where it always sits.
+- iOS Safari also reports a zero-width rect at the end of the line before a wrap for a range
+  that starts at that wrap, which read as a word broken across two lines: a Japanese paragraph
+  split into words lost a line break and ran off the page. A rect with no extent along the line
+  is no text and is ignored. And a fragment's room comes back a pixel wide of its glyph there,
+  which read as a hyphen; a pixel or less of leftover is rounding now.
+
 ## [0.5.0] - 2026-09-06
 
 ### Fixed
