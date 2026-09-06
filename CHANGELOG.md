@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A page translator (Chrome's, Google Translate's) used to rewrite a split target unit by
+  unit, from the page's declared language whatever the text had become, into words the boxes
+  were not measured for: words overlapped and gaps opened ([#1]). Every line the split writes
+  now carries `translate="no"`, so a translator leaves a split target as it is. Translating it
+  is a text change like any other: the source markup goes back, the translator rewrites it,
+  the split is made again. The README shows how, and the demo does it.
+
+[#1]: https://github.com/edoardolunardi/kugiri/issues/1
+
 ### Added
 
 - The demo's install command has a button that copies it, with a check for a moment

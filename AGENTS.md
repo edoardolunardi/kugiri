@@ -52,7 +52,9 @@ npm run release -- patch|minor|major   # see .agents/skills/release
   floated beside and is no unit; hidden content is left alone. A floated drop cap is a float.
 - **The split only structures and marks.** Units carry `data-line`, `data-word`, `data-char` and
   the same index as `--line`, `--word`, `--char`; masks carry `data-mask`; the target carries
-  `data-split` and the counts. No animation, no colours, no opinions in the library.
+  `data-split` and the counts; lines carry `translate="no"`, so a page translator cannot rewrite
+  a unit into a word its box was not measured for. No animation, no colours, no opinions in the
+  library.
 - **Dependency-free, ES2022, one file.** The README states the built size. Keep it honest: the
   release script restates it, and a change that grows the library by more than a few hundred bytes
   gzipped deserves a second look.

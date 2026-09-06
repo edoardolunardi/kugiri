@@ -15,7 +15,9 @@
 // The split only structures and marks: every unit carries `data-line`, `data-word` or `data-char`
 // with its index, the same index as a custom property (`--line`, `--word`, `--char`) for a CSS
 // stagger, and a mask carries `data-mask`; the target carries `data-split` and the counts
-// (`--lines`, `--words`, `--chars`). The consumer owns the animation, in CSS or in script.
+// (`--lines`, `--words`, `--chars`). A line carries `translate="no"`, since a page translator that
+// rewrote a boxed word would put one the box was not measured for in it. The consumer owns the
+// animation, in CSS or in script.
 //
 // Dependency-free on purpose: it ships to other projects as-is.
 
@@ -1417,6 +1419,13 @@ function cutRun(run: RunPlan, context: Context) {
     const unindented = run.indent && index > 0 ? ";text-indent:0" : "";
     const firstLine = run.firstLine && index === 0 ? `;${run.firstLine}` : "";
     const line = wrapper("div", context, `display:block;position:relative${nowrap}${last}${unindented}${firstLine}`);
+
+    // A page translator rewrites text in place, each inline-block on its own and from the page's
+    // declared language whatever the text has become, and a unit measured for one word cannot hold
+    // another: the line, and so every unit in it, is marked not to translate. Translating a split
+    // target is a text change like any other: the original markup goes back for the translator, and
+    // the split is made again once it has rewritten it.
+    line.setAttribute("translate", "no");
 
     line.append(fragment);
     pruneEmpty(line, context);

@@ -55,7 +55,7 @@
             <strong>The reveal, an example.</strong> Each unit rises out of its mask with the Web Animations API,
             staggered by its index. GSAP or Motion would take the same elements.
           </p>
-          <pre data-wipe><code>// Not part of kugiri: this page's own reveal, one way to animate the units.
+          <pre data-wipe translate="no"><code>// Not part of kugiri: this page's own reveal, one way to animate the units.
 const split = splitText(target, { type: ["words"], mask: "words" });
 
 const reveal = split.words.map((word, index) =>
@@ -85,7 +85,7 @@ for (const mask of split.masks) {
             <a href="#css-reveal">CSS-only reveal</a> case runs this way: the page splits it into words, sets one
             attribute, and the stylesheet does the rest.
           </p>
-          <pre data-wipe><code>/* Not part of kugiri: this page's own CSS-only reveal, one way to animate the units. */
+          <pre data-wipe translate="no"><code>/* Not part of kugiri: this page's own CSS-only reveal, one way to animate the units. */
 .css-reveal [data-word] {
   opacity: 0;
   transform: translateY(0.6em);
@@ -102,7 +102,7 @@ for (const mask of split.masks) {
     transform: none;
   }
 }</code></pre>
-          <pre data-wipe><code>// The only script the CSS-only reveal needs.
+          <pre data-wipe translate="no"><code>// The only script the CSS-only reveal needs.
 splitText(target, { type: ["words"] });
 target.dataset.revealed = "";</code></pre>
           <p data-target>
@@ -111,7 +111,7 @@ target.dataset.revealed = "";</code></pre>
             changes, reverts every split and splits again, with no reveal a second time: the text stays responsive and
             the units sit at rest.
           </p>
-          <pre data-wipe><code>// Not part of kugiri: this page's own resize handling, one way to do it.
+          <pre data-wipe translate="no"><code>// Not part of kugiri: this page's own resize handling, one way to do it.
 let width = main.clientWidth;
 let timer = 0;
 
@@ -124,6 +124,14 @@ new ResizeObserver(() => {
   clearTimeout(timer);
   timer = setTimeout(resplit, 150); // once a drag settles
 }).observe(main);</code></pre>
+          <p data-target>
+            <strong>A translated page, an example.</strong> A page translator rewrites the text in place, lazily, as it
+            scrolls into view, and would rewrite a boxed word into one the box was not measured for: the lines a split
+            writes carry <code>translate="no"</code>, and a translator leaves a split target as it is. This page watches
+            the root's <code>lang</code>, puts every split back to its source markup for the translator to reach, and
+            splits again once the translator has rewritten it, the way a target waits for the viewport. The README
+            shows the code.
+          </p>
         </div>
       </header>
 

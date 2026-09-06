@@ -22,6 +22,10 @@ type Reveal = {
   /** A stagger of the target's own, in place of its level's. */
   stagger: number | undefined;
   split: TextSplit | null;
+  /** The markup the page loaded with, which goes back in place of the split's own once a translator has been at the page. */
+  pristine: string;
+  /** Revealed once: a later split settles at rest, with no reveal a second time. */
+  played: boolean;
   expected: Painted;
 };
 
@@ -50,6 +54,12 @@ const SAME_LINE_TOLERANCE = 2;
 
 /** How far a line may end from where it was painted. WebKit reports range rects rounded, so a pixel is its own noise. */
 const MOVE_TOLERANCE = 1.5;
+
+/** A translator rewrites what is on screen in a burst; this long after the last rewrite, the page reads and splits again. */
+const SETTLE = 150;
+
+/** How long a target in view waits for a translator that has not rewritten it before it splits as it is. */
+const GRACE = 1500;
 
 const words = new Intl.Segmenter(undefined, { granularity: "word" });
 const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
@@ -534,6 +544,23 @@ class Demo {
   /** The header's snippets, not split but wiped into view in the same cascade. */
   wipes: HTMLElement[] = [];
   observer: IntersectionObserver;
+  /** Every target's reveal, for what a translator rewrites. */
+  byTarget: Map<HTMLElement, Reveal> = new Map();
+  /** What a translator rewrites inside the targets; the page's own writes are taken off it as they are made. */
+  mutations: MutationObserver;
+  /** The root's lang when the page loaded; a page translator sets it to the language it translated into. */
+  lang = document.documentElement.lang;
+  /** Whether a translator has the page, as of the last change to the root. */
+  translated = false;
+  /** How many times the page has been translated or turned back; the source markup goes back from then on. */
+  translations = 0;
+  /** Targets the translator has rewritten since the page was translated, or since they went back to the source. */
+  rewritten = new Set<Reveal>();
+  /** Rewritten targets whose painted lines are to be read again once the translator's burst settles. */
+  dirty = new Set<Reveal>();
+  /** Targets in view, waiting for the translator to rewrite them before they split, each with its grace timer. */
+  waiting = new Map<Reveal, number>();
+  settleTimer = 0;
   /** Smooth scrolling for the page, stepped from the harness's own frame loop. Not part of the library. */
   lenis: Lenis;
   readout: HTMLElement;
@@ -574,6 +601,8 @@ class Demo {
           css: section.dataset.reveal === "css",
           stagger: undefined,
           split: null,
+          pristine: target.innerHTML,
+          played: false,
           expected: { lines: [], ends: [], height: 0 },
         });
       }
@@ -594,6 +623,8 @@ class Demo {
         css: false,
         stagger: INTRO_STAGGER,
         split: null,
+        pristine: target.innerHTML,
+        played: false,
         expected: { lines: [], ends: [], height: 0 },
       });
     }
@@ -690,6 +721,26 @@ class Demo {
       timer = window.setTimeout(this.resplit, 150);
     }).observe(main);
 
+    // A page translator (Chrome's, Google Translate's) rewrites the text in place, lazily, as it
+    // scrolls into view, and sets the root's lang to the language it translated into, with a class
+    // (translated-ltr, translated-rtl) beside it. The lines a split writes carry translate="no", so
+    // a translator never rewrites a boxed word into one the box was not measured for, and never
+    // translates a split target either. So the page does what a consumer has to: when the page is
+    // translated, or turned back, every split goes back to its source markup for the translator to
+    // reach, and splits again once the translator has rewritten it, the way a target waits for the
+    // viewport. What the translator rewrites is watched on the targets themselves.
+    this.byTarget = new Map([...this.reveals, ...this.intros].map((reveal) => [reveal.target, reveal]));
+    this.mutations = new MutationObserver(this.onRewrite);
+
+    for (const target of this.byTarget.keys()) {
+      this.mutations.observe(target, { subtree: true, childList: true, characterData: true });
+    }
+
+    new MutationObserver(this.onTranslate).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["lang", "class"],
+    });
+
     void document.fonts.ready.then(this.start);
   }
 
@@ -741,6 +792,13 @@ class Demo {
         continue;
       }
 
+      // Under a translator, a target it has not rewritten yet would split in the source language,
+      // and a split target is out of its reach: the target waits for the rewrite, a moment at most.
+      if (this.translated && !this.rewritten.has(reveal)) {
+        this.wait(reveal);
+        continue;
+      }
+
       // Header targets that come into view together play as one cascade per column, in document
       // order, each picking up where the last one's lines end.
       if (this.intros.includes(reveal)) {
@@ -762,7 +820,7 @@ class Demo {
    * Splits and reveals a target, its units staggered from `offset` units in; returns how many
    * units it has. A batch case passes all its targets to one call and reveals them together, as
    * one page would; any other case splits its one target on its own, so both forms of the call are
-   * exercised.
+   * exercised. A target revealed before settles at rest instead.
    */
   play(reveal: Reveal, offset = 0): number {
     const batch = reveal.section.hasAttribute("data-batch");
@@ -784,15 +842,33 @@ class Demo {
     }
 
     this.splitTimes.push(performance.now() - start);
+    // The split's own writes are no rewrite of the translator's.
+    this.mutations.takeRecords();
     this.render();
 
     let units = 0;
 
     for (const other of group) {
-      units = Math.max(units, this.animate(other, offset));
+      units = Math.max(units, other.played ? this.rest(other) : this.animate(other, offset));
+      other.played = true;
     }
 
     return units;
+  }
+
+  /** A split made again sits at rest: the reveal does not play a second time, and the clip the split put on every mask goes at once. */
+  rest(reveal: Reveal): number {
+    if (!reveal.split) {
+      return 0;
+    }
+
+    reveal.target.setAttribute("data-revealed", "settled");
+
+    for (const mask of reveal.split.masks) {
+      mask.style.clipPath = "none";
+    }
+
+    return reveal.split[reveal.unit].length;
   }
 
   /** Reveals one split target, its units staggered from `offset` units in; returns how many units it has. */
@@ -929,14 +1005,8 @@ class Demo {
     this.render();
   };
 
-  /**
-   * Every split reverts and is made again for the new layout, its units at rest: the reveal does
-   * not play a second time. A target still waiting for the viewport only has its painted lines read
-   * again. All reverts come first and all reads next, and the targets that share their options are
-   * passed to one call each, so no read lands between writes and the page costs a few layouts, not
-   * one per target.
-   */
-  resplit = () => {
+  /** The verdicts of the last check go, since the splits they judged are about to. */
+  clearVerdicts() {
     this.verdict.textContent = "";
 
     for (const reveal of this.reveals) {
@@ -947,17 +1017,41 @@ class Demo {
       if (result) {
         result.textContent = "";
       }
+    }
+  }
 
-      if (reveal.split) {
-        reveal.split.revert();
-        reveal.target.removeAttribute("data-revealed");
-      }
+  /**
+   * The split goes, and the target is what it was before any split. Once a translator has been at
+   * the page, that is the markup the page loaded with, not the markup the split captured: a target
+   * split after the translation captured the translator's rewrite, which the translator would
+   * translate a second time, from the wrong language, if it came back as new content.
+   */
+  putBack(reveal: Reveal) {
+    reveal.split?.revert();
+    reveal.split = null;
+
+    if (this.translations > 0) {
+      reveal.target.innerHTML = reveal.pristine;
     }
 
-    for (const intro of this.intros) {
-      if (intro.split) {
-        intro.split.revert();
-        intro.target.removeAttribute("data-revealed");
+    reveal.target.removeAttribute("data-revealed");
+    this.rewritten.delete(reveal);
+  }
+
+  /**
+   * Every split reverts and is made again for the new layout, its units at rest: the reveal does
+   * not play a second time. A target still waiting for the viewport only has its painted lines read
+   * again. All reverts come first and all reads next, and the targets that share their options are
+   * passed to one call each, so no read lands between writes and the page costs a few layouts, not
+   * one per target. Once a translator has been at the page, the split targets go back to the source
+   * and wait for the viewport instead, so the translator rewrites them before they split.
+   */
+  resplit = () => {
+    this.clearVerdicts();
+
+    for (const reveal of this.byTarget.values()) {
+      if (reveal.split) {
+        this.putBack(reveal);
       }
     }
 
@@ -965,69 +1059,169 @@ class Demo {
       reveal.expected = paintedLines(reveal.target, reveal.target, reveal.ignore);
     }
 
-    const groups = new Map<string, Reveal[]>();
+    if (this.translations > 0) {
+      for (const reveal of this.byTarget.values()) {
+        if (reveal.played && !this.waiting.has(reveal)) {
+          this.observer.observe(reveal.target);
+        }
+      }
+    } else {
+      const groups = new Map<string, Reveal[]>();
 
-    for (const reveal of [...this.reveals, ...this.intros]) {
-      if (reveal.split) {
-        const key = JSON.stringify([reveal.unit, maskOption(reveal), reveal.ignore]);
+      for (const reveal of this.byTarget.values()) {
+        if (reveal.played) {
+          const key = JSON.stringify([reveal.unit, maskOption(reveal), reveal.ignore]);
 
-        groups.set(key, [...(groups.get(key) ?? []), reveal]);
+          groups.set(key, [...(groups.get(key) ?? []), reveal]);
+        }
+      }
+
+      for (const group of groups.values()) {
+        const start = performance.now();
+        const splits = splitText(
+          group.map((reveal) => reveal.target),
+          { type: [group[0].unit], mask: maskOption(group[0]), ignore: group[0].ignore }
+        );
+
+        this.splitTimes.push(performance.now() - start);
+
+        group.forEach((reveal, index) => {
+          reveal.split = splits[index];
+          this.rest(reveal);
+        });
       }
     }
 
-    for (const group of groups.values()) {
-      const start = performance.now();
-      const splits = splitText(
-        group.map((reveal) => reveal.target),
-        { type: [group[0].unit], mask: maskOption(group[0]), ignore: group[0].ignore }
-      );
-
-      this.splitTimes.push(performance.now() - start);
-
-      group.forEach((reveal, index) => {
-        reveal.split = splits[index];
-        reveal.target.setAttribute("data-revealed", "settled");
-
-        // Nothing is on its way up, so the clip the split put on every mask goes at once.
-        for (const mask of splits[index].masks) {
-          mask.style.clipPath = "none";
-        }
-      });
-    }
-
+    this.mutations.takeRecords();
     this.render();
   };
+
+  /**
+   * The root changed. When that is the page being translated, or turned back, every split target
+   * goes back to the source and waits for the viewport again: the translator rewrites what comes
+   * into view, and the target splits once it has. A target in view already waiting for the
+   * translator waits afresh.
+   */
+  onTranslate = () => {
+    const root = document.documentElement;
+    const translated =
+      root.lang !== this.lang || root.classList.contains("translated-ltr") || root.classList.contains("translated-rtl");
+
+    if (translated === this.translated) {
+      return;
+    }
+
+    this.translated = translated;
+    this.translations += 1;
+    this.rewritten.clear();
+    this.dirty.clear();
+    this.clearVerdicts();
+
+    for (const reveal of this.byTarget.values()) {
+      if (reveal.split || this.waiting.has(reveal)) {
+        this.stopWaiting(reveal);
+        this.putBack(reveal);
+        this.observer.observe(reveal.target);
+      }
+    }
+
+    // What the source paints is read now, once for every target: a target the translator never
+    // rewrites (turned back, or with nothing it translates) splits against these lines.
+    for (const reveal of this.reveals) {
+      reveal.expected = paintedLines(reveal.target, reveal.target, reveal.ignore);
+    }
+
+    this.mutations.takeRecords();
+    this.render();
+  };
+
+  /**
+   * A translator rewrote something inside a target that is not split (a split one is out of its
+   * reach, save a float in front of its lines). The target's painted lines are read again once the
+   * burst settles, and it splits then if it is in view waiting for this.
+   */
+  onRewrite = (records: MutationRecord[]) => {
+    for (const record of records) {
+      const element = record.target instanceof Element ? record.target : record.target.parentElement;
+      const target = element?.closest<HTMLElement>("[data-target]");
+      const reveal = target ? this.byTarget.get(target) : undefined;
+
+      if (reveal && !reveal.split) {
+        this.rewritten.add(reveal);
+        this.dirty.add(reveal);
+      }
+    }
+
+    if (this.dirty.size > 0) {
+      clearTimeout(this.settleTimer);
+      this.settleTimer = window.setTimeout(this.settle, SETTLE);
+    }
+  };
+
+  /** The translator's burst settled: reads first, for every target it rewrote, then the ones in view waiting for it split. */
+  settle = () => {
+    const due = [...this.dirty];
+
+    this.dirty.clear();
+
+    for (const reveal of due) {
+      if (this.reveals.includes(reveal) && !reveal.split) {
+        reveal.expected = paintedLines(reveal.target, reveal.target, reveal.ignore);
+      }
+    }
+
+    for (const reveal of due) {
+      if (this.waiting.has(reveal)) {
+        this.stopWaiting(reveal);
+
+        if (!reveal.split) {
+          this.play(reveal);
+        }
+      }
+    }
+  };
+
+  /** A target in view under a translator waits for its rewrite, and splits as it is if none comes in time. */
+  wait(reveal: Reveal) {
+    if (this.waiting.has(reveal)) {
+      return;
+    }
+
+    this.waiting.set(
+      reveal,
+      window.setTimeout(() => {
+        this.waiting.delete(reveal);
+
+        if (!reveal.split) {
+          this.play(reveal);
+        }
+      }, GRACE)
+    );
+  }
+
+  stopWaiting(reveal: Reveal) {
+    clearTimeout(this.waiting.get(reveal));
+    this.waiting.delete(reveal);
+  }
 
   replay = () => {
     this.splitTimes = [];
     this.longTasks = 0;
     this.frames = 0;
     this.slowFrames = 0;
-    this.verdict.textContent = "";
+    this.clearVerdicts();
 
-    for (const intro of this.intros) {
-      intro.split?.revert();
-      intro.split = null;
-      intro.target.removeAttribute("data-revealed");
+    for (const reveal of this.byTarget.values()) {
+      this.stopWaiting(reveal);
+      this.putBack(reveal);
+      reveal.played = false;
     }
 
     for (const wipe of this.wipes) {
       wipe.removeAttribute("data-revealed");
     }
 
-    for (const reveal of this.reveals) {
-      reveal.split?.revert();
-      reveal.split = null;
-      reveal.target.removeAttribute("data-revealed");
-      reveal.section.removeAttribute("data-status");
-
-      const result = reveal.section.querySelector<HTMLElement>(".case-result");
-
-      if (result) {
-        result.textContent = "";
-      }
-    }
-
+    this.mutations.takeRecords();
     void document.fonts.ready.then(this.start);
   };
 

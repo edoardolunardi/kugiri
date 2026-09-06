@@ -133,6 +133,49 @@ loaded (`await document.fonts.ready`), and split again after the text or its sty
 to replay the reveal after a resize or to show the units at rest is a choice the split leaves to
 you; the demo splits again with no reveal, so the text stays responsive and nothing plays twice.
 
+### A translated page
+
+A page translator (Chrome's, Google Translate's) rewrites the text in place, lazily, as it scrolls
+into view, and treats every box as a segment of its own: it would translate a split target a unit
+at a time, out of its sentence, from the page's declared language whatever the unit now says, into
+a word the box was not measured for. So every line the split writes carries `translate="no"`, and
+a translator leaves a split target as it is. Translating it is a text change like any other: put
+the source markup back, let the translator rewrite it, split again. A translator sets the root's
+`lang` to the language it translated into, and its rewrite lands as a burst of mutations inside
+the target. The split's own writes are taken off the observer as they are made, or they would pass
+for rewrites:
+
+```ts
+import { splitText } from "kugiri";
+
+const target = document.querySelector("h1");
+const source = target.innerHTML;
+let split = splitText(target, { type: ["lines"] });
+let timer = 0;
+
+const rewrites = new MutationObserver(() => {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    split = splitText(target, { type: ["lines"] });
+    rewrites.takeRecords();
+  }, 150);
+});
+
+rewrites.observe(target, { subtree: true, childList: true, characterData: true });
+
+new MutationObserver(() => {
+  split.revert();
+  target.innerHTML = source;
+  rewrites.takeRecords();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+```
+
+The source goes back rather than the split's own markup: a target split after the translation
+captured the translator's rewrite, which the translator would translate a second time, from the
+wrong language, if it came back as new content. The demo does the same for its fifty cases, and a
+target that scrolls into view under a translated page waits for the translator's rewrite before it
+splits at all.
+
 ## API
 
 ### `splitText(target, options?)`
@@ -175,6 +218,7 @@ const splits = splitText(document.querySelectorAll("article p"), { type: ["words
 | Each unit  | `data-line`, `data-word`, `data-char` (index)  | `--line`, `--word`, `--char` (index) |
 | Each mask  | `data-mask` (index)                            |                                     |
 | The target | `data-split` (the levels present)              | `--lines`, `--words`, `--chars` (counts) |
+| Each line  | `translate="no"` (see [A translated page](#a-translated-page)) |                     |
 
 Indexes count in document order, so `calc(var(--word) * 30ms)` is a stagger and
 `calc((var(--words) - var(--word)) * 30ms)` a reversed one.
@@ -214,6 +258,10 @@ Content is classified by how it lays out, not by tag:
 - The split reads `Intl.Segmenter` for words and graphemes (Chrome 87, Safari 14.1, Firefox 125).
   Without it, words fall back to whitespace and graphemes to code points, which breaks emoji
   sequences apart.
+- A page translator does not translate a split target: the lines carry `translate="no"`, since a
+  translator would rewrite each unit on its own into a word the box was not measured for. Put the
+  source markup back for the translator and split again once it has rewritten it; see
+  [A translated page](#a-translated-page).
 - Screen readers may read a character split letter by letter. If you split a heading into
   characters, give the target an `aria-label` with its text and `aria-hidden` on the units.
 - Word and character units are boxes, and a box cannot be shaped across its edges, so the split
