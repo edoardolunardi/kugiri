@@ -27,7 +27,7 @@ script. It never decides where a line should break; the browser did that already
 - **Cheap.** One read phase, one write phase, no forced reflow. A 2,000-word article splits into
   lines in about 10ms on a laptop, and an array of targets is planned whole before any is written,
   so a page of blocks costs the one layout a single block does.
-- **Small.** One file, ES2022, no dependencies. About 7.0 kB minified and gzipped (19.3 kB
+- **Small.** One file, ES2022, no dependencies. About 7.1 kB minified and gzipped (19.4 kB
   minified, 6.4 kB with brotli).
 
 ## Install

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-06
+
 ### Fixed
 
 - A page translator (Chrome's, Google Translate's) used to rewrite a split target unit by
