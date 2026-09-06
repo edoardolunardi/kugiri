@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-09-06
+
 ### Fixed
 
 - A target inside a scaled ancestor (a hero fitted to a phone with `scale: 0.4`) split into
