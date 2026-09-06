@@ -454,6 +454,50 @@ function setupBoxes() {
   apply();
 }
 
+/** How long the check stands in for the copy icon after a click. */
+const COPIED_FOR = 1600;
+
+/**
+ * The button beside the install command puts the command on the clipboard and shows a check for a
+ * moment. Where there is no clipboard to write to (a page that is not secure, a permission refused)
+ * the command is selected instead, so the usual keystroke copies it.
+ */
+function setupCopy() {
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
+    const code = button.parentElement?.querySelector("code");
+    const status = button.querySelector<HTMLElement>("[role=status]");
+    let timer = 0;
+
+    if (!code) {
+      continue;
+    }
+
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(code.textContent ?? "");
+      } catch {
+        getSelection()?.selectAllChildren(code);
+        return;
+      }
+
+      button.dataset.copied = "";
+
+      if (status) {
+        status.textContent = "Copied";
+      }
+
+      clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        delete button.dataset.copied;
+
+        if (status) {
+          status.textContent = "";
+        }
+      }, COPIED_FOR);
+    });
+  }
+}
+
 /** What the case asks of the split, as the tags under its title: the unit, and anything off the default. */
 function describe(reveal: Reveal): string[] {
   const tags: string[] = [reveal.unit];
@@ -620,6 +664,7 @@ class Demo {
 
     setupBoxes();
     setupHotkeys();
+    setupCopy();
 
     // The page scrolls through Lenis, which eases the wheel and the anchor links and steps on the
     // frame loop below. It scrolls the window itself, so the observer and the painted lines are

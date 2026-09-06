@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The demo's install command has a button that copies it, with a check for a moment
+  after; where there is no clipboard to write to, the command is selected instead.
+
 ## [0.4.0] - 2026-09-05
 
 ### Added
