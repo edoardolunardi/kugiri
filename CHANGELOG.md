@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-06
+
 ### Fixed
 
 - iOS Safari reads every range in the text that follows a styled `::first-letter` one glyph
