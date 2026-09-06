@@ -309,8 +309,10 @@ Chromium, WebKit and Firefox.
 What SplitText does that kugiri does not: split again on resize and on font load (`autoSplit`),
 set `aria-label` on the target and `aria-hidden` on the units, take a custom word delimiter, a
 `prepareText` hook and a `specialChars` list. kugiri is a snapshot of one layout and leaves those
-to the caller. SplitText is 3.7 kB gzipped on top of the 28 kB GSAP core it needs, under the GSAP
-standard license; kugiri is 7.5 kB gzipped, dependency-free, under MIT.
+to the caller. SplitText is also the smaller file, 3.7 kB gzipped to kugiri's 7.5, and it runs
+without the GSAP core: the file imports nothing, and `register()` borrows `toArray` and `context`
+from a core when one is on the page and falls back to its own otherwise. kugiri spends the
+difference on the list above. SplitText is under the GSAP standard license, kugiri under MIT.
 
 ## Demo
 
