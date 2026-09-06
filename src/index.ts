@@ -61,7 +61,7 @@ type Segment = {
   /** The row the word starts on and the row it ends on (the same for a word on one line), with how far each reaches. */
   first?: Row;
   last?: Row;
-  /** The painted extent along the line, restated on the unit so boxing the word moves nothing. */
+  /** The painted extent along the line, in the container's own pixels, restated on the unit so boxing the word moves nothing. */
   size?: number;
   /** The same per grapheme, read when chars are asked for. */
   graphemeSizes?: number[];
@@ -116,6 +116,8 @@ type RunPlan = {
   /** The floats in the run, each with the index of the line it floated beside. */
   floats: { node: HTMLElement; line: number }[];
   along: (rect: DOMRect) => Span;
+  /** Painted pixels per pixel of the container's own along the line, for the hyphens measured after the writes. */
+  scale: number;
   justify: boolean;
   /** The container indents its first line, which every line block after the first would repeat. */
   indent: boolean;
@@ -456,7 +458,10 @@ function planRun(container: Element, from: number, to: number, context: Context)
   const style = getComputedStyle(container);
   const justify = style.textAlign === "justify";
   const indent = style.textIndent !== "0px";
-  const { along, across } = axes(style);
+  const { along, across, vertical } = axes(style);
+  const scale = scaleOf(container, style, vertical);
+  /** A painted extent in the container's own pixels, which is what a unit's box is written in. */
+  const own = (painted: number) => painted / scale.along;
   const range = document.createRange();
   const starts: Boundary[] = [];
   const pieces: Piece[] = [];
@@ -582,7 +587,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
       const edge = along(container.getBoundingClientRect()).start;
       const inset = ["paddingInlineStart", "borderInlineStartWidth", "textIndent"] as const;
 
-      rows[0].start = inset.reduce((at, prop) => at + Number.parseFloat(style[prop]), edge);
+      rows[0].start = inset.reduce((at, prop) => at + Number.parseFloat(style[prop]) * scale.along, edge);
     }
 
     word.first = rows[0];
@@ -590,7 +595,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
 
     if (rows.length === 1) {
       word.rect = rows[0].rect;
-      word.size = rows[0].end - rows[0].start;
+      word.size = own(rows[0].end - rows[0].start);
 
       // Grapheme extents are the distances between where consecutive graphemes start, the last one
       // reaching the word's end: engines round a lone grapheme's width, but its position is exact,
@@ -613,7 +618,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
         word.graphemeSizes = starts.map((at, index) => {
           const next = index + 1 < starts.length ? starts[index + 1] : rows[0].end;
 
-          return Number.isNaN(at) || Number.isNaN(next) ? 0 : Math.max(0, next - at);
+          return Number.isNaN(at) || Number.isNaN(next) ? 0 : own(Math.max(0, next - at));
         });
       }
 
@@ -662,8 +667,8 @@ function planRun(container: Element, from: number, to: number, context: Context)
         offset: start + list[breaks].index,
         fragment: {
           start: start + list[from].index,
-          extent: rows[row - 1].end - rows[row - 1].start,
-          next: rows[row].end - rows[row].start,
+          extent: own(rows[row - 1].end - rows[row - 1].start),
+          next: own(rows[row].end - rows[row].start),
         },
       });
       startRows.push(across(rows[row].rect).start);
@@ -702,10 +707,10 @@ function planRun(container: Element, from: number, to: number, context: Context)
         // the unit itself reaches to where the next one starts: positions stay absolute either way.
         if (word.index + word.length === next.index) {
           if (word.rect && word.first) {
-            word.size = next.first.start - word.first.start;
+            word.size = own(next.first.start - word.first.start);
           }
         } else {
-          word.gap = next.first.start - word.last.end;
+          word.gap = own(next.first.start - word.last.end);
         }
       });
 
@@ -732,7 +737,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
       if (node instanceof HTMLElement) {
         const margin = Number.parseFloat(getComputedStyle(node).marginBlockStart) || 0;
 
-        floats.push({ node, top: across(node.getBoundingClientRect()).start - margin });
+        floats.push({ node, top: across(node.getBoundingClientRect()).start - margin * scale.across });
       }
 
       return;
@@ -838,9 +843,11 @@ function planRun(container: Element, from: number, to: number, context: Context)
     }
 
     const contentAlong =
-      along(box).start + Number.parseFloat(style.paddingInlineStart) + Number.parseFloat(style.borderInlineStartWidth);
+      along(box).start +
+      (Number.parseFloat(style.paddingInlineStart) + Number.parseFloat(style.borderInlineStartWidth)) * scale.along;
     const contentAcross =
-      across(box).start + Number.parseFloat(style.paddingBlockStart) + Number.parseFloat(style.borderBlockStartWidth);
+      across(box).start +
+      (Number.parseFloat(style.paddingBlockStart) + Number.parseFloat(style.borderBlockStartWidth)) * scale.across;
     const offset = along(rest).start - contentAlong;
     const rows: { start: number; end: number; along: number }[] = [];
 
@@ -874,13 +881,13 @@ function planRun(container: Element, from: number, to: number, context: Context)
       shortened += 1;
     }
 
-    const width = offset - Number.parseFloat(pseudo.marginLeft) - Number.parseFloat(pseudo.marginRight);
+    const width = own(offset) - Number.parseFloat(pseudo.marginLeft) - Number.parseFloat(pseudo.marginRight);
     const declarations = [`width:${width}px`];
 
     if (shortened > 0 && shortened < rows.length) {
       const bottom = (rows[shortened - 1].end + rows[shortened].start) / 2;
 
-      declarations.push(`height:${bottom - contentAcross - Number.parseFloat(pseudo.marginTop)}px`);
+      declarations.push(`height:${(bottom - contentAcross) / scale.across - Number.parseFloat(pseudo.marginTop)}px`);
     }
 
     return declarations.join(";");
@@ -917,7 +924,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
       }
     }
 
-    const gap = first.start - last.end;
+    const gap = own(first.start - last.end);
     const lastWord = a.words[a.words.length - 1];
     const firstWord = b.words[0];
     const leads = firstWord.index > 0 && !b.node.data.slice(0, firstWord.index).trim();
@@ -948,6 +955,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
     pieces,
     floats: floats.map((entry) => ({ node: entry.node, line: lineOf(entry.top) })),
     along,
+    scale: scale.along,
     justify,
     indent,
     sink: emptySink(),
@@ -987,11 +995,16 @@ function firstLetterOf(container: Element, style: CSSStyleDeclaration): string {
 
 type Span = { start: number; end: number };
 
+type Axes = { along: (rect: DOMRect) => Span; across: (rect: DOMRect) => Span; vertical: boolean };
+
+/** Painted pixels per pixel of a container's own, along the line and across it. */
+type Scale = { along: number; across: number };
+
 /**
  * Coordinates that read in writing order whatever the writing mode: `along` runs down a line,
  * `across` from one line to the next, both growing the way the text is read.
  */
-function axes(style: CSSStyleDeclaration): { along: (rect: DOMRect) => Span; across: (rect: DOMRect) => Span } {
+function axes(style: CSSStyleDeclaration): Axes {
   const vertical = style.writingMode.startsWith("vertical") || style.writingMode.startsWith("sideways");
   const rtl = style.direction === "rtl";
   const leftward = style.writingMode.endsWith("-rl");
@@ -1004,13 +1017,51 @@ function axes(style: CSSStyleDeclaration): { along: (rect: DOMRect) => Span; acr
     return {
       along: (rect) => (rtl ? backward(rect, false) : forward(rect, false)),
       across: (rect) => (leftward ? backward(rect, true) : forward(rect, true)),
+      vertical,
     };
   }
 
   return {
     along: (rect) => (rtl ? backward(rect, true) : forward(rect, true)),
     across: (rect) => forward(rect, false),
+    vertical,
   };
+}
+
+/**
+ * Painted pixels per pixel of the container's own, on each axis of the writing mode. A transform
+ * above the container (a hero scaled down to fit a phone, a card mid-zoom) scales every client
+ * rect the plan reads, while a length written on a unit lays out in the container's own pixels;
+ * the ratio is read off the container itself, its painted box against its laid-out one, so no
+ * ancestor is read and no transform is touched. The laid-out size is the used value the computed
+ * style reports, exact to the sub-pixel on a block; an inline container reports none, and its
+ * offset size, whole pixels, stands in. A rotation or a skew has no such ratio, since a rect is
+ * then a bounding box, and is left as painted.
+ */
+function scaleOf(container: Element, style: CSSStyleDeclaration, vertical: boolean): Scale {
+  const box = container.getBoundingClientRect();
+  const sum = (props: string[]) =>
+    props.reduce((total, prop) => total + (Number.parseFloat(style.getPropertyValue(prop)) || 0), 0);
+  const laidOut = (axis: "width" | "height"): number => {
+    const used = Number.parseFloat(style[axis]);
+
+    if (Number.isNaN(used)) {
+      return container instanceof HTMLElement ? (axis === "width" ? container.offsetWidth : container.offsetHeight) : 0;
+    }
+
+    if (style.boxSizing === "border-box") {
+      return used;
+    }
+
+    return axis === "width"
+      ? used + sum(["padding-left", "padding-right", "border-left-width", "border-right-width"])
+      : used + sum(["padding-top", "padding-bottom", "border-top-width", "border-bottom-width"]);
+  };
+  const ratio = (painted: number, own: number) => (painted > 0 && own > 0 ? painted / own : 1);
+  const x = ratio(box.width, laidOut("width"));
+  const y = ratio(box.height, laidOut("height"));
+
+  return vertical ? { along: y, across: x } : { along: x, across: y };
 }
 
 /**
@@ -1097,7 +1148,9 @@ function hyphenGlyph(width: number, context: Context) {
 /**
  * A fragment a break left at the end of a line, measured once the cut has made it the line's end:
  * the room it reached before, less its natural width now, is the hyphen the browser had drawn. A
- * pixel or less of it is rounding, not a hyphen: WebKit reports the room in whole pixels.
+ * pixel or less of it is rounding, not a hyphen: WebKit reports the room in whole pixels. The two
+ * are compared as painted, since that pixel is a painted one, and the hyphen's box is written in
+ * the container's own.
  */
 function restateHyphen(pending: PendingHyphen, run: RunPlan, context: Context) {
   const { along } = run;
@@ -1118,10 +1171,10 @@ function restateHyphen(pending: PendingHyphen, run: RunPlan, context: Context) {
       end = Math.max(end, span.end);
     }
 
-    const hyphen = pending.fragment.extent - (end - start);
+    const hyphen = pending.fragment.extent * run.scale - (end - start);
 
     if (hyphen > 1) {
-      pending.unit.append(hyphenGlyph(hyphen, context));
+      pending.unit.append(hyphenGlyph(hyphen / run.scale, context));
     }
 
     return;
@@ -1157,10 +1210,10 @@ function restateHyphen(pending: PendingHyphen, run: RunPlan, context: Context) {
     end = Math.max(end, span.end);
   }
 
-  const hyphen = pending.fragment.extent - (end - start);
+  const hyphen = pending.fragment.extent * run.scale - (end - start);
 
   if (hyphen > 1) {
-    tail.after(hyphenGlyph(hyphen, context));
+    tail.after(hyphenGlyph(hyphen / run.scale, context));
   }
 }
 

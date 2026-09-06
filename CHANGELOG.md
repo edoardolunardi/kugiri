@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A target inside a scaled ancestor (a hero fitted to a phone with `scale: 0.4`) split into
+  words or chars came out with every unit boxed at the scale of its glyphs, since a client rect
+  is measured in painted pixels while a unit's width is written in the target's own. The split
+  now reads the scale off the target itself, its painted box against its laid-out one, and
+  restates every extent, gap and hyphen in the target's own pixels. No ancestor is read and no
+  transform is touched, so the two phases stay as they were.
+
 ## [0.5.1] - 2026-09-06
 
 ### Fixed

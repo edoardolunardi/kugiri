@@ -11,9 +11,9 @@ script. It never decides where a line should break; the browser did that already
 
 - **Keeps the paint.** Lines are read off the text with `Range.getClientRects()`, not predicted, so
   `text-wrap: balance`, authored newlines, `<br>`, right-to-left text, scripts without spaces,
-  hyphenation, `overflow-wrap`, `text-indent`, floats, multi-column layout and vertical writing all
-  come out as painted. Words and characters are wrapped inside those lines under
-  `text-wrap: nowrap`, so their boxes can never move a wrap.
+  hyphenation, `overflow-wrap`, `text-indent`, floats, multi-column layout, vertical writing and a
+  target an ancestor scales all come out as painted. Words and characters are wrapped inside those
+  lines under `text-wrap: nowrap`, so their boxes can never move a wrap.
 - **Handles whatever is in the text.** Links and marks are cloned per line the way the spec
   defines. Block containers are split inside themselves, so lists keep their numbers. Only text is
   split: an inline piece that is not text (an icon, a chip, anything you ask it to ignore) rides
@@ -268,6 +268,9 @@ Content is classified by how it lays out, not by tag:
   restates each unit's painted width and the painted gap between units. In Chromium and Firefox the
   result is exact to the sub-pixel; WebKit reports its measurements rounded, so a line can end
   within about a pixel of where it was.
+- A transform above the target scales what the split measures, and the split reads that scale off
+  the target's own box, so a heading scaled down to fit a phone splits as painted. A rotation or a
+  skew has no such ratio: a measurement is then a bounding box, and the split leaves it as it is.
 - WebKit renders a `::first-line` without the `text-transform` it reports, then applies it once an
   animation has touched the line. The split verifies a restated first line against the painted row
   and drops what does not reproduce it, but a transformed `::first-line` is the one case to check by

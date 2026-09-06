@@ -922,6 +922,12 @@ section[data-status="mismatch"] .case-result::before {
   font-variant: small-caps;
 }
 
+/* An ancestor's transform scales every client rect the split reads: the wrapper stands for a hero fitted to a phone. */
+.scaled {
+  scale: 0.5;
+  transform-origin: 0 0;
+}
+
 /* Inline pieces */
 
 .link {
