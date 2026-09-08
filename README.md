@@ -335,6 +335,7 @@ Sites that split their text with kugiri:
 - [House of Honey](https://www.houseofhoney.com/)
 - [The Content Architecture](https://www.contentarchitecture.dev/)
 - [Aspen Search](https://www.aspensearch.com/)
+- [Prism](https://prismscience.org/)
 
 Built something with it? Open a pull request and add it here.
 
