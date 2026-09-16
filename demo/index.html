@@ -212,6 +212,13 @@ A second one after a blank line, which pre-line keeps.</p></div>
 and a newline, the way a typewriter would set them. The rest of this sentence is long enough to wrap at the measure.</p></div>
         </section>
 
+        <section data-case="pre-wrap-indent">
+          <div><h3 class="case-title">pre-wrap with indented lines</h3><p class="case-expect">Lines indented with preserved spaces keep their indent. The break that ends a line adds no empty box below it.</p><p class="case-result"></p></div>
+          <div class="sample"><p class="body measure pre-wrap" data-target>A first line, set the way a typewriter would set it.
+   A second line, indented by three spaces.
+      A third, indented deeper, and long enough to wrap at the measure.</p></div>
+        </section>
+
         <section data-case="align">
           <div><h3 class="case-title">Centered and right aligned</h3><p class="case-expect">Alignment is inherited by the line blocks, so the rag stays where it was.</p><p class="case-result"></p></div>
           <div class="sample rich"><p class="body measure center" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</p><p class="body measure right" data-target>Type is not a silent thing. Every letter was drawn, cut and cast by a hand that argued with the one before it, and it is the space between the letters that decides whether a page is read or skipped.</p></div>

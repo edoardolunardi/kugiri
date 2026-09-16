@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A target that keeps its whitespace (`white-space: pre`, `pre-wrap` or `break-spaces`) and
+  indents a line with spaces came out taller than it was painted, with the indent gone: a cut
+  lands on the first word of a line, so the break that ended the line above and the spaces that
+  indented this one both stayed behind. The line block above is a break of its own, so the one
+  left inside it ended a block that was already ended and painted an empty box under its text.
+  The split now moves those spaces forward to the line they indent, and leaves the break where
+  it is, since at the end of a block it paints nothing while removing it would cost a blank
+  line in the source the box the browser painted for it.
+
 ## [0.5.2] - 2026-09-06
 
 ### Fixed

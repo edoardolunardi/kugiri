@@ -121,6 +121,8 @@ type RunPlan = {
   justify: boolean;
   /** The container indents its first line, which every line block after the first would repeat. */
   indent: boolean;
+  /** The container keeps its segment breaks and the spaces after them, which a cut can strand. */
+  preserved: boolean;
   sink: Sink;
 };
 
@@ -184,6 +186,13 @@ const DECORATION_PROPS = [
 const INHERIT_DECORATION = DECORATION_PROPS.map((prop) => `${prop}:inherit`).join(";");
 
 const UNIT_ATTRIBUTE: Record<SplitLevel, string> = { lines: "line", words: "word", chars: "char" };
+
+/**
+ * The `white-space` values that keep a segment break and the spaces after it. `pre-line` is not one
+ * of them: it keeps the break and collapses the spaces, so it has no indent for a cut to strand.
+ * The shorthand is enough to read, since every engine serialises it from `white-space-collapse`.
+ */
+const PRESERVES_SPACES = /^(?:pre|pre-wrap|break-spaces)$/;
 
 /** Whether a `::first-letter` declaration list floats the glyph. */
 const FLOATED = /(?:^|;)float:(?!none)/;
@@ -958,6 +967,7 @@ function planRun(container: Element, from: number, to: number, context: Context)
     scale: scale.along,
     justify,
     indent,
+    preserved: PRESERVES_SPACES.test(style.whiteSpace),
     sink: emptySink(),
   };
 }
@@ -1427,6 +1437,40 @@ function pruneEmpty(line: Element, context: Context) {
 }
 
 /**
+ * A line block is a break of its own, so the whitespace a preserved break left in front of the next
+ * line belongs to that line and not to the one the cut just closed. The cut lands on the first word
+ * of a line, which leaves the break and the indent behind it: the indent is lost, and the break now
+ * ends a block that is already ended, so the closed line paints an empty box under its text. Moving
+ * the spaces forward restores both. The break itself stays where it is, because at the end of a
+ * block it paints nothing, while taking it out would cost a blank line in the source the box the
+ * browser painted for it.
+ */
+function settleBreaks(lines: HTMLElement[]) {
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const walker = document.createTreeWalker(lines[index], NodeFilter.SHOW_TEXT);
+    let tail: Text | null = null;
+
+    while (walker.nextNode()) {
+      tail = walker.currentNode as Text;
+    }
+
+    if (!tail) {
+      continue;
+    }
+
+    // At least one space, so a break already at the end of its line is left alone.
+    const trailing = /\n([^\S\n]+)$/.exec(tail.data);
+
+    if (!trailing) {
+      continue;
+    }
+
+    tail.data = tail.data.slice(0, trailing.index + 1);
+    lines[index + 1].prepend(document.createTextNode(trailing[1]));
+  }
+}
+
+/**
  * The write phase for one run: words and chars wrapped first (when asked for), then the lines cut
  * from the last backwards, so every earlier boundary stays valid while the DOM after it is lifted
  * out. Every cut ends at the container, after whatever the run still holds: an end inside an
@@ -1515,6 +1559,10 @@ function cutRun(run: RunPlan, context: Context) {
       maskOf(line, "div", `display:block;position:relative;${maskClip("lines", context)}`, sink, context);
     }
   });
+
+  if (run.preserved) {
+    settleBreaks(sink.lines);
+  }
 
   // A float is not text: it is lifted out of the line the cut left it in and put back in front of
   // the block of the line it floated beside, at the same top, so the lines still flow around it as
