@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-09-16
+
 ### Fixed
 
 - A target that keeps its whitespace (`white-space: pre`, `pre-wrap` or `break-spaces`) and
