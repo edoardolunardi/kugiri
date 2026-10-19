@@ -4,6 +4,3 @@ contact_links:
   - name: Try your case on the demo
     url: https://edoardolunardi.github.io/kugiri/
     about: Fifty situations running text can be in, each split and checked against the paint. Handy for finding the case closest to yours.
-  - name: Add your site to the showcase
-    url: https://github.com/edoardolunardi/kugiri/blob/main/README.md#showcase
-    about: Built something with kugiri? Open a pull request that adds it to the README and the demo. Or open an issue with the link and it gets added.
